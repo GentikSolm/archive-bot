@@ -3,6 +3,8 @@ import os
 from dotenv import load_dotenv
 from discord_slash import SlashCommand # Importing the newly installed library.
 from discord_slash.utils.manage_commands import create_option
+from discord_slash.utils.manage_commands import create_permission
+from discord_slash.model import SlashCommandPermissionType
 load_dotenv()
 
 class User:
@@ -56,9 +58,9 @@ guild_ids = [852591935938887721]
                     option_type=6,
                     required=True)],
                 guild_ids=guild_ids)
-async def thank(ctx, user: str):
+async def thank(ctx, user):
     db.thank(user)
-    await ctx.send(f"+rep to <@{user}>!")
+    await ctx.send(f"+rep to {user.mention}!")
 
 @slash.slash(name='curse',
                 description="Curse user by taking rep",
@@ -68,9 +70,9 @@ async def thank(ctx, user: str):
                     option_type=6,
                     required=True)],
                 guild_ids=guild_ids)
-async def curse(ctx, user: str):
+async def curse(ctx, user):
     db.curse(user)
-    await ctx.send(f"+rep to @{user}!")
+    await ctx.send(f"+rep to {user.mention}!")
 
 @slash.slash(name='vibe-check',
                 description="See how much rep a user has",
@@ -80,14 +82,13 @@ async def curse(ctx, user: str):
                     option_type=6,
                     required=True)],
                 guild_ids=guild_ids)
-async def vibeCheck(ctx, user: str):
+async def vibeCheck(ctx, user):
     tempRep = db.vibeCheck(user)
     if tempRep == None:
         await ctx.send(f"{user} has never been given, or had rep taken.")
     else:
         await ctx.send(f"{user} has {tempRep} rep.")
 
-#Need perms here!
 @slash.slash(name='deleteuser',
                 description="Delete user from database",
                 options=[create_option(
@@ -95,11 +96,14 @@ async def vibeCheck(ctx, user: str):
                     description="The user you'd like to return to void",
                     option_type=6,
                     required=True)],
+                permissions={
+                    guild_ids[0]:[
+                        create_permission(852591935938887721, SlashCommandPermissionType.ROLE, False),
+                        create_permission(855130847933235261, SlashCommandPermissionType.ROLE, True)
+                        ]},
                 guild_ids=guild_ids)
-async def vibeCheck(ctx, user: str):
+async def deleteuser(ctx, user):
     db.delUser(user)
-    await ctx.send(f"{user} has never been returned to the void.")
-
-
+    await ctx.send(f"{user.mention} has been returned to the void.")
 
 client.run(os.getenv('TOKEN'))
