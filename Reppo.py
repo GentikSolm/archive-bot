@@ -61,7 +61,7 @@ class Database:
 db = Database(dbConfig)
 client = discord.Client(intents=discord.Intents.all())
 slash = SlashCommand(client, sync_commands=True)
-guild_ids = [852591935938887721]
+guild_ids = [os.getenv('GUID')]
 
 @slash.slash(name='thank',
                 description="Thank user by adding rep",
