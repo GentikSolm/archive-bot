@@ -1,6 +1,8 @@
 import discord
 import os
-from datetime import date, datetime
+import sys
+import logging
+from datetime import datetime
 from dotenv import load_dotenv
 from discord_slash import SlashCommand # Importing the newly installed library.
 from discord_slash.utils.manage_commands import create_option
@@ -8,60 +10,94 @@ from discord_slash.utils.manage_commands import create_permission
 from discord_slash.model import SlashCommandPermissionType
 import mysql.connector as sql
 
-load_dotenv()
-dbConfig = {
-    'user':os.getenv('DB_USERNAME'),
-    'password':os.getenv('DB_PASSWORD'),
-    'host':'127.0.0.1',
-    'database':'reppo'
-}
 class Database:
-    def __init__(self, config):
+    def __init__(self, config, logLevel):
         self.cnx = sql.connect(**config)
         self.cursor = self.cnx.cursor()
         self.insertUser = ('INSERT INTO users'
                            '(user_id, rep)'
                            'VALUES (%s, %s)')
         self.insertTran = ('INSERT INTO transactions'
-                           '(action_id, sender, receiver, time)'
-                           'VALUES (%(action_id)s, %(sender)s, %(receiver)s, %(time)s)')
+                           '(action_id, sender, receiver, time, setrep_param)'
+                           'VALUES (%(action_id)s, %(sender)s, %(receiver)s, %(time)s, %(setrep_param)s)')
+        self.logLevel = logLevel
     def __del__(self):
         self.cursor.close()
         self.cnx.close()
     def addUser(self, user_id):
         self.cursor.execute(self.insertUser, (user_id, 0))
         self.cnx.commit()
+        if self.logLevel == 2:
+            print(self.insertUser % (user_id, 0))
+        logging.debug(self.insertUser % (user_id, 0))
     def addTrans(self, data):
         self.cursor.execute(self.insertTran, data)
         self.cnx.commit()
+        if self.logLevel == 2:
+            print(self.insertTran % (data))
+        logging.debug(self.insertTran % (data))
     def getUserData(self, user_id):
-        self.cursor.execute(f'SELECT * FROM users WHERE user_id = {user_id}')
+        sqlStr = f'SELECT * FROM users WHERE user_id = {user_id}'
+        self.cursor.execute(sqlStr)
         userData = self.cursor.fetchall()
+        logging.debug(sqlStr + f'\n\t Returned {userData}')
+        if self.logLevel == 2:
+            print(sqlStr)
+            print(f'\t Returned {userData}')
         if userData == []:
             return (False, userData)
         return (True, userData[0][1])
-    def setrep(self, user_id, rep):
-        if (self.getUserData(user_id))[0]:
-            self.cursor.execute(f'UPDATE users SET rep = {rep} WHERE user_id = {user_id}')
+    def vibeCheck(self, context):
+        vibes = self.getUserData(context[1].id)
+        if self.logLevel == 1:
+            print(f'{context[0]} vibechecked {context[1]}- returned {vibes[1]}.')
+        return vibes
+    def setrep(self, data, context, rep):
+        if (self.getUserData(data['receiver']))[0]:
+            sqlStr = f'UPDATE users SET rep = {rep} WHERE user_id = {data["receiver"]}'
         else:
-            self.cursor.execute(f'INSERT INTO users (user_id, rep) VALUE ({user_id}, {rep})')
+            sqlStr = f'INSERT INTO users (user_id, rep) VALUE ({data["receiver"]}, {rep})'
+        self.cursor.execute(sqlStr)
         self.cnx.commit()
-    def thank(self, data):
+        if self.logLevel == 1:
+            print(f'{context[0]} setrep of {context[1]} to {rep}')
+        if self.logLevel == 2:
+            print(sqlStr)
+        logging.debug(sqlStr)
+        self.addTrans(data)
+    def thank(self, data, context):
         self.addTrans(data)
         if not (self.getUserData(data['receiver']))[0]:
             self.addUser(data['receiver'])
-        self.cursor.execute(f'UPDATE users SET rep = rep + 1 WHERE user_id = {data["receiver"]}')
+        sqlStr = f'UPDATE users SET rep = rep + 1 WHERE user_id = {data["receiver"]}'
+        self.cursor.execute(sqlStr)
         self.cnx.commit()
-    def curse(self, data):
+        if self.logLevel == 1:
+            print(f'{context[0]} thanked {context[1]}')
+        if self.logLevel == 2:
+            print(sqlStr)
+        logging.debug(sqlStr)
+    def curse(self, data, context):
         self.addTrans(data)
         if not (self.getUserData(data['receiver']))[0]:
             self.addUser(data['receiver'])
-        self.cursor.execute(f'UPDATE users SET rep = rep - 1 WHERE user_id = {data["receiver"]}')
+        sqlStr = f'UPDATE users SET rep = rep - 1 WHERE user_id = {data["receiver"]}'
+        self.cursor.execute(sqlStr)
         self.cnx.commit()
-db = Database(dbConfig)
+        if self.logLevel == 1:
+            print(f'{context[0]} cursed {context[1]}')
+        if self.logLevel == 2:
+            print(sqlStr)
+        logging.debug(sqlStr)
+
+load_dotenv()
 client = discord.Client(intents=discord.Intents.all())
 slash = SlashCommand(client, sync_commands=True)
-guild_ids = [os.getenv('GUID')]
+guild_ids = [int(os.getenv('GUID'))]
+server_roles = {
+    'admin':os.getenv('ADMIN_ROLE_ID'),
+    'everyone':os.getenv('EVERYONE_ROLE_ID')
+}
 
 @slash.slash(name='thank',
                 description="Thank user by adding rep",
@@ -72,17 +108,16 @@ guild_ids = [os.getenv('GUID')]
                     required=True)],
                 guild_ids=guild_ids)
 async def thank(ctx, user):
-    time = str(datetime.now())[:-7]
-    sender = ctx.author.id
-    receiver = user.id
     data = {
         'action_id':1,
-        'sender':str(sender),
-        'receiver':str(receiver),
-        'time':time
+        'sender':ctx.author.id,
+        'receiver':user.id,
+        'time':str(datetime.now())[:-7],
+        'setrep_param':None
     }
-    db.thank(data)
-    print(f'{ctx.author} thanked {user}')
+    context = (ctx.author, user)
+    db.thank(data, context)
+
     await ctx.send(f"+rep to {user.mention}!")
 
 @slash.slash(name='curse',
@@ -94,17 +129,15 @@ async def thank(ctx, user):
                     required=True)],
                 guild_ids=guild_ids)
 async def curse(ctx, user):
-    time = str(datetime.now())[:-7]
-    sender = ctx.author.id
-    receiver = user.id
     data = {
-        'action_id':2,
-        'sender':sender,
-        'receiver':receiver,
-        'time':time
+        'action_id':1,
+        'sender':ctx.author.id,
+        'receiver':user.id,
+        'time':str(datetime.now())[:-7],
+        'setrep_param':None
     }
-    db.curse(data)
-    print(f'{ctx.author} cursed {user}')
+    context = (ctx.author, user)
+    db.curse(data, context)
     await ctx.send(f"-rep to {user.mention}!")
 
 @slash.slash(name='vibe-check',
@@ -116,8 +149,8 @@ async def curse(ctx, user):
                     required=True)],
                 guild_ids=guild_ids)
 async def vibeCheck(ctx, user):
-    data = db.getUserData(user.id)
-    print(f'{ctx.author} checked {user}')
+    context = (ctx.author, user)
+    data = db.vibeCheck(context)
     if not data[0]:
         await ctx.send(f"{user} has never been given, or had rep taken.")
     else:
@@ -138,13 +171,37 @@ async def vibeCheck(ctx, user):
                         required=True)],
                 permissions={
                     guild_ids[0]:[
-                        create_permission(852591935938887721, SlashCommandPermissionType.ROLE, False),
-                        create_permission(855130847933235261, SlashCommandPermissionType.ROLE, True)
+                        create_permission(server_roles['everyone'], SlashCommandPermissionType.ROLE, False),
+                        create_permission(server_roles['admin'], SlashCommandPermissionType.ROLE, True)
                         ]},
                 guild_ids=guild_ids)
 async def setrep(ctx, user, rep):
-    db.setrep(user.id, rep)
-    print(f'{ctx.author} setrep for {user}')
+    data = {
+        'action_id':3,
+        'sender':ctx.author.id,
+        'receiver':user.id,
+        'time':str(datetime.now())[:-7],
+        'setrep_param':rep
+    }
+    context = (ctx.author, user)
+    db.setrep(data, context, rep)
     await ctx.send(f"{user.mention} has had their rep set to {rep}")
 
-client.run(os.getenv('TOKEN'))
+if __name__ == '__main__':
+    if '-d' in sys.argv:
+        logging.basicConfig(filename='reppo.log', encoding='utf-8', level=logging.DEBUG, format='%(asctime)s %(message)s')
+        logLevel = 2
+    elif '-v' in sys.argv:
+        logging.basicConfig(filename='reppo.log', encoding='utf-8', level=logging.INFO, format='%(asctime)s %(message)s')
+        logLevel = 1
+    else:
+        logging.basicConfig(filename='reppo.log', encoding='utf-8', level=logging.WARNING, format='%(asctime)s %(message)s')
+        logLevel = 0;
+    dbConfig = {
+        'user':os.getenv('DB_USERNAME'),
+        'password':os.getenv('DB_PASSWORD'),
+        'host':'127.0.0.1',
+        'database':'reppo'
+    }
+    db = Database(dbConfig, logLevel)
+    client.run(os.getenv('TOKEN'))
