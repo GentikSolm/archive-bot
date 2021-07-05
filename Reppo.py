@@ -111,6 +111,8 @@ class Database:
         logging.debug(sqlStr)
         if self.logLevel == 2:
             print(sqlStr)
+        if self.logLevel == 1:
+            print('Someone called Leaderboard')
         return self.cursor.fetchall()
 load_dotenv()
 client = discord.Client(intents=discord.Intents.all())
