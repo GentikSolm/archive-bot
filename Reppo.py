@@ -130,7 +130,7 @@ async def thank(ctx, user):
                 guild_ids=guild_ids)
 async def curse(ctx, user):
     data = {
-        'action_id':1,
+        'action_id':2,
         'sender':ctx.author.id,
         'receiver':user.id,
         'time':str(datetime.now())[:-7],
