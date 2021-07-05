@@ -37,7 +37,7 @@ class Database:
             print(self.insertTran % (data))
         logging.debug(self.insertTran % (data))
     def getUserData(self, user_id):
-        sqlStr = f'SELECT * FROM users WHERE user_id = {user_id}'
+        sqlStr = f'SELECT user_id, rep FROM users WHERE user_id = {user_id}'
         self.cursor.execute(sqlStr)
         userData = self.cursor.fetchall()
         logging.debug(sqlStr + f'\n\t Returned {userData}')
@@ -55,7 +55,7 @@ class Database:
     def setrep(self, data, context, rep):
         if abs(rep) >= 2147483647:
             logging.error(f'Rep out of range (2147483647): {rep}')
-            print(f'ERROR\tREP OUT OF RANGE (2147483647): {rep}')
+            print(f'ERROR:\tREP OUT OF RANGE (2147483647): {rep}')
             raise Exception('OutOfRange')
         if (self.getUserData(data['receiver']))[0]:
             sqlStr = f'UPDATE users SET rep = {rep} WHERE user_id = {data["receiver"]}'
@@ -72,7 +72,9 @@ class Database:
     def thank(self, data, context):
         userData = self.getUserData(data['receiver'])
         if userData[0]:
-            if userData[1] >= abs(2147483647):
+            if userData[1] >= 2147483647:
+                logging.error(f'{data["receiver"]} already has max rep.')
+                print(f'ERROR:\t{data["receiver"]} already has max rep.')
                 raise Exception('OutOfRange')
         else:
             self.addUser(data['receiver'])
@@ -88,7 +90,9 @@ class Database:
     def curse(self, data, context):
         userData = self.getUserData(data['receiver'])
         if userData[0]:
-            if userData[1] >= abs(2147483647):
+            if userData[1] <= -2147483647:
+                logging.error(f'{data["receiver"]} already has max negative rep.')
+                print(f'ERROR:\t{data["receiver"]} already has max negative rep.')
                 raise Exception('OutOfRange')
         else:
             self.addUser(data['receiver'])
@@ -101,7 +105,13 @@ class Database:
         if self.logLevel == 2:
             print(sqlStr)
         logging.debug(sqlStr)
-
+    def leaderboard(self):
+        sqlStr = f'SELECT user_id, rep FROM users ORDER BY rep DESC LIMIT 5'
+        self.cursor.execute(sqlStr)
+        logging.debug(sqlStr)
+        if self.logLevel == 2:
+            print(sqlStr)
+        return self.cursor.fetchall()
 load_dotenv()
 client = discord.Client(intents=discord.Intents.all())
 slash = SlashCommand(client, sync_commands=True)
@@ -131,7 +141,7 @@ async def thank(ctx, user):
     try:
         db.thank(data, context)
         await ctx.send(f"+rep to {user.mention}!")
-    except OutOfRange:
+    except Exception:
         await ctx.send(f"Wow, {user.mention} person is awesome. They have the max rep!")
 
 @slash.slash(name='curse',
@@ -154,7 +164,7 @@ async def curse(ctx, user):
     try:
         db.curse(data, context)
         await ctx.send(f"-rep to {user.mention}!")
-    except OutOfRange:
+    except Exception:
         await ctx.send(f"Wow, this {user.mention} sucks. They have hit rock bottom and cannot be cursed any more...")
 
 @slash.slash(name='vibe-check',
@@ -202,10 +212,21 @@ async def setrep(ctx, user, rep):
     }
     context = (ctx.author, user)
     try:
-        db.setrep(data, context, rep):
+        db.setrep(data, context, rep)
         await ctx.send(f"{user.mention} has had their rep set to {rep}")
-    except OutOfRange:
+    except Exception:
         await ctx.send(f"Oops, that number was out of range! Number must be in range ±2147483646")
+
+@slash.slash(name='leaderboard',
+                description="Display the top 5 most reputable people",
+                guild_ids=guild_ids)
+async def leaderboard(ctx):
+    topUsers = db.leaderboard()
+    topUsersString = "Top users:\n>>> "
+    for count, user in enumerate(topUsers):
+        topUsersString += f"{count+1}) {await client.fetch_user(user[0])} with {user[1]} rep.\n"
+    await ctx.send(topUsersString)
+
 if __name__ == '__main__':
     if '-d' in sys.argv:
         logging.basicConfig(filename='reppo.log', encoding='utf-8', level=logging.DEBUG, format='%(asctime)s %(message)s')
