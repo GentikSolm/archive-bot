@@ -115,10 +115,14 @@ class Database:
 load_dotenv()
 client = discord.Client(intents=discord.Intents.all())
 slash = SlashCommand(client, sync_commands=True)
-guild_ids = [int(os.getenv('GUID'))]
+guild_ids = os.getenv('GUID').split()
+for i in range(0, len(guild_ids)):
+    guild_ids[i] = int(guild_ids[i])
 server_roles = {
     'admin':os.getenv('ADMIN_ROLE_ID'),
-    'everyone':os.getenv('EVERYONE_ROLE_ID')
+    'everyone':os.getenv('EVERYONE_ROLE_ID'),
+    'owner':os.getenv('OWNER'),
+    'everyone2':os.getenv('EVERYONE_ROLE_ID_2')
 }
 
 @slash.slash(name='thank',
@@ -137,12 +141,15 @@ async def thank(ctx, user):
         'time':str(datetime.now())[:-7],
         'setrep_param':None
     }
+    if data['receiver'] == data['sender']:
+         await ctx.send(f"You cant rate yourself bro...")
+         return
     context = (ctx.author, user)
     try:
         db.thank(data, context)
-        await ctx.send(f"+rep to {user.mention}!")
+        await ctx.send(f"+rep to {user}!")
     except Exception:
-        await ctx.send(f"Wow, {user.mention} person is awesome. They have the max rep!")
+        await ctx.send(f"Wow, {user} person is awesome. They have the max rep!")
 
 @slash.slash(name='curse',
                 description="Curse user by taking rep",
@@ -160,12 +167,15 @@ async def curse(ctx, user):
         'time':str(datetime.now())[:-7],
         'setrep_param':None
     }
+    if data['receiver'] == data['sender']:
+         await ctx.send(f"You cant rate yourself bro...")
+         return
     context = (ctx.author, user)
     try:
         db.curse(data, context)
-        await ctx.send(f"-rep to {user.mention}!")
+        await ctx.send(f"-rep to {user}!")
     except Exception:
-        await ctx.send(f"Wow, this {user.mention} sucks. They have hit rock bottom and cannot be cursed any more...")
+        await ctx.send(f"Wow, this {user} sucks. They have hit rock bottom and cannot be cursed any more...")
 
 @slash.slash(name='vibe-check',
                 description="See how much rep a user has",
@@ -200,7 +210,11 @@ async def vibeCheck(ctx, user):
                     guild_ids[0]:[
                         create_permission(server_roles['everyone'], SlashCommandPermissionType.ROLE, False),
                         create_permission(server_roles['admin'], SlashCommandPermissionType.ROLE, True)
-                        ]},
+                        ],
+                    guild_ids[1]:[
+                        create_permission(server_roles['everyone2'], SlashCommandPermissionType.ROLE, False),
+                        create_permission(server_roles['owner'], SlashCommandPermissionType.ROLE, True)
+                    ]},
                 guild_ids=guild_ids)
 async def setrep(ctx, user, rep):
     data = {
