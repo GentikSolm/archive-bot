@@ -53,6 +53,10 @@ class Database:
             print(f'{context[0]} vibechecked {context[1]}- returned {vibes[1]}.')
         return vibes
     def setrep(self, data, context, rep):
+        if abs(rep) >= 2147483647:
+            logging.error(f'Rep out of range (2147483647): {rep}')
+            print(f'ERROR\tREP OUT OF RANGE (2147483647): {rep}')
+            raise Exception('OutOfRange')
         if (self.getUserData(data['receiver']))[0]:
             sqlStr = f'UPDATE users SET rep = {rep} WHERE user_id = {data["receiver"]}'
         else:
@@ -66,24 +70,32 @@ class Database:
         logging.debug(sqlStr)
         self.addTrans(data)
     def thank(self, data, context):
-        self.addTrans(data)
-        if not (self.getUserData(data['receiver']))[0]:
+        userData = self.getUserData(data['receiver'])
+        if userData[0]:
+            if userData[1] >= abs(2147483647):
+                raise Exception('OutOfRange')
+        else:
             self.addUser(data['receiver'])
         sqlStr = f'UPDATE users SET rep = rep + 1 WHERE user_id = {data["receiver"]}'
         self.cursor.execute(sqlStr)
         self.cnx.commit()
+        self.addTrans(data)
         if self.logLevel == 1:
             print(f'{context[0]} thanked {context[1]}')
         if self.logLevel == 2:
             print(sqlStr)
         logging.debug(sqlStr)
     def curse(self, data, context):
-        self.addTrans(data)
-        if not (self.getUserData(data['receiver']))[0]:
+        userData = self.getUserData(data['receiver'])
+        if userData[0]:
+            if userData[1] >= abs(2147483647):
+                raise Exception('OutOfRange')
+        else:
             self.addUser(data['receiver'])
         sqlStr = f'UPDATE users SET rep = rep - 1 WHERE user_id = {data["receiver"]}'
         self.cursor.execute(sqlStr)
         self.cnx.commit()
+        self.addTrans(data)
         if self.logLevel == 1:
             print(f'{context[0]} cursed {context[1]}')
         if self.logLevel == 2:
@@ -116,9 +128,11 @@ async def thank(ctx, user):
         'setrep_param':None
     }
     context = (ctx.author, user)
-    db.thank(data, context)
-
-    await ctx.send(f"+rep to {user.mention}!")
+    try:
+        db.thank(data, context)
+        await ctx.send(f"+rep to {user.mention}!")
+    except OutOfRange:
+        await ctx.send(f"Wow, {user.mention} person is awesome. They have the max rep!")
 
 @slash.slash(name='curse',
                 description="Curse user by taking rep",
@@ -137,8 +151,11 @@ async def curse(ctx, user):
         'setrep_param':None
     }
     context = (ctx.author, user)
-    db.curse(data, context)
-    await ctx.send(f"-rep to {user.mention}!")
+    try:
+        db.curse(data, context)
+        await ctx.send(f"-rep to {user.mention}!")
+    except OutOfRange:
+        await ctx.send(f"Wow, this {user.mention} sucks. They have hit rock bottom and cannot be cursed any more...")
 
 @slash.slash(name='vibe-check',
                 description="See how much rep a user has",
@@ -184,9 +201,11 @@ async def setrep(ctx, user, rep):
         'setrep_param':rep
     }
     context = (ctx.author, user)
-    db.setrep(data, context, rep)
-    await ctx.send(f"{user.mention} has had their rep set to {rep}")
-
+    try:
+        db.setrep(data, context, rep):
+        await ctx.send(f"{user.mention} has had their rep set to {rep}")
+    except OutOfRange:
+        await ctx.send(f"Oops, that number was out of range! Number must be in range ±2147483646")
 if __name__ == '__main__':
     if '-d' in sys.argv:
         logging.basicConfig(filename='reppo.log', encoding='utf-8', level=logging.DEBUG, format='%(asctime)s %(message)s')
