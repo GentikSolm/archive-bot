@@ -56,7 +56,7 @@ class Database:
         if abs(rep) >= 2147483647:
             logging.error(f'Rep out of range (2147483647): {rep}')
             print(f'ERROR:\tREP OUT OF RANGE (2147483647): {rep}')
-            raise Exception('OutOfRange')
+            raise OutOfRange()
         if (self.getUserData(data['receiver']))[0]:
             sqlStr = f'UPDATE users SET rep = {rep} WHERE user_id = {data["receiver"]}'
         else:
@@ -75,7 +75,7 @@ class Database:
             if userData[1] >= 2147483647:
                 logging.error(f'{data["receiver"]} already has max rep.')
                 print(f'ERROR:\t{data["receiver"]} already has max rep.')
-                raise Exception('OutOfRange')
+                raise OutOfRange()
         else:
             self.addUser(data['receiver'])
         sqlStr = f'UPDATE users SET rep = rep + 1 WHERE user_id = {data["receiver"]}'
@@ -93,7 +93,7 @@ class Database:
             if userData[1] <= -2147483647:
                 logging.error(f'{data["receiver"]} already has max negative rep.')
                 print(f'ERROR:\t{data["receiver"]} already has max negative rep.')
-                raise Exception('OutOfRange')
+                raise OutOfRange()
         else:
             self.addUser(data['receiver'])
         sqlStr = f'UPDATE users SET rep = rep - 1 WHERE user_id = {data["receiver"]}'
@@ -127,6 +127,10 @@ server_roles = {
     'everyone2':os.getenv('EVERYONE_ROLE_ID_2')
 }
 
+def OutOfRange(Exception):
+    def __init__(self, message='Out of Range'):
+        super(OutOfRange, self).__init__(message)
+
 @slash.slash(name='thank',
                 description="Thank user by adding rep",
                 options=[create_option(
@@ -150,7 +154,8 @@ async def thank(ctx, user):
     try:
         db.thank(data, context)
         await ctx.send(f"+rep to {user}!")
-    except Exception:
+    except OutOfRange:
+        print(excep)
         await ctx.send(f"Wow, {user} person is awesome. They have the max rep!")
 
 @slash.slash(name='curse',
@@ -176,7 +181,7 @@ async def curse(ctx, user):
     try:
         db.curse(data, context)
         await ctx.send(f"-rep to {user}!")
-    except Exception:
+    except OutOfRange:
         await ctx.send(f"Wow, this {user} sucks. They have hit rock bottom and cannot be cursed any more...")
 
 @slash.slash(name='vibe-check',
@@ -230,7 +235,7 @@ async def setrep(ctx, user, rep):
     try:
         db.setrep(data, context, rep)
         await ctx.send(f"{user.mention} has had their rep set to {rep}")
-    except Exception:
+    except OutOfRange:
         await ctx.send(f"Oops, that number was out of range! Number must be in range ±2147483646")
 
 @slash.slash(name='leaderboard',
@@ -242,6 +247,7 @@ async def leaderboard(ctx):
     for count, user in enumerate(topUsers):
         topUsersString += f"{count+1}) {await client.fetch_user(user[0])} with {user[1]} rep.\n"
     await ctx.send(topUsersString)
+
 
 if __name__ == '__main__':
     if '-d' in sys.argv:
