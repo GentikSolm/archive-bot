@@ -11,9 +11,10 @@
 
 Command line arguments:  
 For debugging: (One or the other, however if you have both, the lower (more verbose) log level will be chosen)  
-'python Reppo.py -d'  
+
+`python Reppo.py -d`  
 * debug mode; intense log levels  
-'python Reppo.py -v'  
+`python Reppo.py -v`  
 * turn on verbose logging  
 
 ## Files:
