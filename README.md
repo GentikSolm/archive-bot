@@ -11,14 +11,14 @@
 
 Command line arguments:  
 For debugging: (One or the other, however if you have both, the lower (more verbose) log level will be chosen)  
-* -d  
-  * debug mode; intense log levels  
-* -v  
-  * turn on verbose logging  
+'python Reppo.py -d'  
+* debug mode; intense log levels  
+'python Reppo.py -v'  
+* turn on verbose logging  
 
 ## Files:
 reppo_db.py
 * Contains the Database class & custom Exception
-* Handles all calls to sql server
+* Handles all calls to sql server  
 Reppo.py
 * Main file, contains slash commands & starts bot
