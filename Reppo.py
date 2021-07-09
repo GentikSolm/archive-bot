@@ -2,7 +2,7 @@ import discord
 import os
 import sys
 import logging
-from reppo_db import OutOfRange, Database
+from Reppo_db import OutOfRange, Database
 
 from datetime import datetime
 from dotenv import load_dotenv
