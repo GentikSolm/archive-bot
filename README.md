@@ -1,6 +1,9 @@
 # Reppo
 Reppo, the Reputation tracking discord bot
 
+reppo_db contains the database class, which handles all the calls to the sql server
+  & custom Exceptions.
+
 .env should contain:
   TOKEN=(Bot Token)
   DB_USERNAME=(database username)
