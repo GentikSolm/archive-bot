@@ -19,7 +19,7 @@ For debugging: (One or the other, however if you have both, the lower (more verb
 * turn on verbose logging  
 
 ## Files:
-Reppo_db.py
+ReppoDb.py
 * Contains the Database class & custom Exception
 * Handles all calls to sql server  
 
