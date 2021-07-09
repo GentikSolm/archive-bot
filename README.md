@@ -9,16 +9,16 @@
 * ADMIN_ROLE_ID=(admin role_id)
 * EVERYONE_ROLE_ID=(everryone role_id)
 
-Command line arguments:
-  >For debugging: (One or the other, however if you have both, the lower log level will be chosen)  
-  >  -d  
-  >    debug mode; intense log levels  
-  >  -v  
-  >    turn on verbose logging  
+Command line arguments:  
+For debugging: (One or the other, however if you have both, the lower (more verbose) log level will be chosen)  
+* -d  
+  * debug mode; intense log levels  
+* -v  
+  * turn on verbose logging  
 
-### Files:
-* reppo_db
-  * Contains the Database class & custom Exception
-    * Handles all calls to sql server
-* Reppo.py
-  * Main file, contains slash commands & starts bot
+## Files:
+reppo_db.py
+* Contains the Database class & custom Exception
+* Handles all calls to sql server
+Reppo.py
+* Main file, contains slash commands & starts bot
