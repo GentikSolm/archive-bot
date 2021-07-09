@@ -14,7 +14,12 @@ reppo_db contains the database class, which handles all the calls to the sql ser
 
 Command line arguments:
   >For debugging: (One or the other, however if you have both, the lower log level will be chosen)
+
   >  -d
+
   >    debug mode; intense log levels
+
   >  -v
+
   >    turn on verbose logging
+  
