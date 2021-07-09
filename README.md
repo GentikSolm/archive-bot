@@ -1,9 +1,6 @@
 # Reppo
 ## The Reputation tracking discord bot
 
-reppo_db contains the database class, which handles all the calls to the sql server
-  & custom Exceptions.
-
 ### Reppo uses a .env file for secrete stuff, it should contain:
 * TOKEN=(Bot Token)
 * DB_USERNAME=(database username)
@@ -13,13 +10,15 @@ reppo_db contains the database class, which handles all the calls to the sql ser
 * EVERYONE_ROLE_ID=(everryone role_id)
 
 Command line arguments:
-  >For debugging: (One or the other, however if you have both, the lower log level will be chosen)
+  >For debugging: (One or the other, however if you have both, the lower log level will be chosen)  
+  >  -d  
+  >    debug mode; intense log levels  
+  >  -v  
+  >    turn on verbose logging  
 
-  >  -d
-
-  >    debug mode; intense log levels
-
-  >  -v
-
-  >    turn on verbose logging
-  
+### Files:
+* reppo_db
+  * Contains the Database class & custom Exception
+    * Handles all calls to sql server
+* Reppo.py
+  * Main file, contains slash commands & starts bot
