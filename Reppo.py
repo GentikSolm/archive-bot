@@ -49,8 +49,8 @@ async def thank(ctx, user):
         return
     context = (ctx.author, user)
     try:
-        db.thank(data, context)
-        embed.set_author(name=f'{user} got + rep!', icon_url=user.avatar_url)
+        rep, mention_flag = db.thank(data, context)
+        embed.set_author(name=f'{user} got + {rep} rep!', icon_url=user.avatar_url)
         await ctx.send(embed=embed)
     except OutOfRange:
         print(excep)
@@ -62,6 +62,7 @@ async def thank(ctx, user):
         embed.title ='Oops, looks like I\'ve lost my marbles.'
         embed.description = 'To the logs!'
         await ctx.send(embed=embed)
+
 @slash.slash(name='curse',
                 description="Curse user by taking rep",
                 options=[create_option(
@@ -85,8 +86,8 @@ async def curse(ctx, user):
         return
     context = (ctx.author, user)
     try:
-        db.curse(data, context)
-        embed.set_author(name=f'{user} got - rep.', icon_url=user.avatar_url)
+        rep, mention_flag = db.curse(data, context)
+        embed.set_author(name=f'{user} got - {rep} rep.', icon_url=user.avatar_url)
         await ctx.send(embed=embed)
     except OutOfRange:
         embed.set_author(name=f'{user} sucks... They have hit rock bottom and cannot be cursed any more', icon_url=user.avatar_url)
@@ -109,7 +110,7 @@ async def curse(ctx, user):
 async def vibeCheck(ctx, user):
     context = (ctx.author, user)
     try:
-        data = db.vibeCheck(context)
+        flag, userData, rank = db.vibeCheck(context)
     except Exception as e:
         logging.error(e)
         print(e)
@@ -118,11 +119,12 @@ async def vibeCheck(ctx, user):
         await ctx.send(embed=embed)
         return
     embed = discord.Embed(color=EMBED_COLOR)
-    if not data[0]:
+    if not flag:
         embed.set_author(name=f'{user} has never been given, or had rep taken.', icon_url=user.avatar_url)
         await ctx.send(embed=embed)
     else:
-        embed.set_author(name=f'{user} has {data[1]} rep.', icon_url=user.avatar_url)
+        embed.set_author(name=f'{user} has {userData[0]} rep.', icon_url=user.avatar_url)
+        embed.description = f'They are currently Rank **{rank}** on the Leaderboard.'
         await ctx.send(embed=embed)
 
 @slash.slash(name='setrep',
@@ -208,5 +210,10 @@ if __name__ == '__main__':
         'host':'127.0.0.1',
         'database':'reppo'
     }
-    db = Database(dbConfig, logLevel)
+    try:
+        db = Database(dbConfig, logLevel)
+    except Exception as e:
+        print(f"ERROR: {e}")
+        logging.error(e)
+        exit()
     client.run(os.getenv('TOKEN'))

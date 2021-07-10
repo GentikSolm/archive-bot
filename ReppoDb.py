@@ -2,6 +2,8 @@ import mysql.connector as sql
 import logging
 from datetime import datetime
 
+RANK_REPS = [10, 100]
+
 class OutOfRange(Exception):
     def __init__(self, rep, message='Out of Range'):
         logging.error(f'Rep out of range (2147483647): {rep}')
@@ -18,24 +20,39 @@ class Database:
         self.insertTran = ('INSERT INTO transactions'
                            '(action_id, sender, receiver, time, setrep_param)'
                            'VALUES (%(action_id)s, %(sender)s, %(receiver)s, %(time)s, %(setrep_param)s)')
+        self.getPosStr = ("SELECT (SELECT COUNT(*) FROM users x WHERE x.rep >= users.rep) FROM users WHERE user_id = %s")
         self.logLevel = logLevel
+
     def __del__(self):
         self.cursor.close()
         self.cnx.close()
+
     def addUser(self, user_id):
         self.cursor.execute(self.insertUser, (user_id, 0))
         self.cnx.commit()
         if self.logLevel == 2:
             print(self.insertUser % (user_id, 0))
         logging.debug(self.insertUser % (user_id, 0))
+
     def addTrans(self, data):
         self.cursor.execute(self.insertTran, data)
         self.cnx.commit()
         if self.logLevel == 2:
             print(self.insertTran % (data))
         logging.debug(self.insertTran % (data))
+
+    def getPos(self, user_id):
+        self.cursor.execute(self.getPosStr % user_id)
+        userData = self.cursor.fetchall()
+        logging.debug(f'\n\t Returned {userData}')
+        if self.logLevel == 2:
+            print(self.getPosStr, user_id)
+            print(f'\t Returned {userData}')
+        return userData[0][0]
+
     def getUserData(self, user_id):
-        sqlStr = f'SELECT user_id, rep FROM users WHERE user_id = {user_id}'
+        # userData is [rep, total_trans, mention_flag]
+        sqlStr = f'SELECT rep, total_trans, mention_flag FROM users WHERE user_id = {user_id}'
         self.cursor.execute(sqlStr)
         userData = self.cursor.fetchall()
         logging.debug(sqlStr + f'\n\t Returned {userData}')
@@ -44,12 +61,17 @@ class Database:
             print(f'\t Returned {userData}')
         if userData == []:
             return (False, userData)
-        return (True, userData[0][1])
+        return (True, userData[0])
+
     def vibeCheck(self, context):
-        vibes = self.getUserData(context[1].id)
+        # Vibes is (User exists, [rep], rank)
+        flag, userData = self.getUserData(context[1].id)
+        rank = self.getPos(context[1].id)
+        vibes = (flag, userData, rank)
         if self.logLevel == 1:
             print(f'{context[0]} vibechecked {context[1]}- returned {vibes[1]}.')
         return vibes
+
     def setrep(self, data, context, rep):
         if abs(rep) >= 2147483647:
             raise OutOfRange(rep)
@@ -65,14 +87,23 @@ class Database:
             print(sqlStr)
         logging.debug(sqlStr)
         self.addTrans(data)
+
     def thank(self, data, context):
-        userData = self.getUserData(data['receiver'])
-        if userData[0]:
-            if userData[1] >= 2147483647:
-                raise OutOfRange(userData[1])
+        r_flag, r_userData = self.getUserData(data['receiver'])
+        s_flag, s_userData = self.getUserData(data['sender'])
+        #Need to check if sender exists, and their transaction count
+        if r_flag:
+            if r_userData[0] >= 2147483647:
+                raise OutOfRange(r_userData[0])
+            elif s_userData[0] >= RANK_REPS[1]:
+                rep = 3
+            elif s_userData[0] >= RANK_REPS[0]:
+                rep = 2
+            else:
+                rep = 1
         else:
             self.addUser(data['receiver'])
-        sqlStr = f'UPDATE users SET rep = rep + 1 WHERE user_id = {data["receiver"]}'
+        sqlStr = f'UPDATE users SET rep = rep + {rep} WHERE user_id = {data["receiver"]}'
         self.cursor.execute(sqlStr)
         self.cnx.commit()
         self.addTrans(data)
@@ -81,14 +112,24 @@ class Database:
         if self.logLevel == 2:
             print(sqlStr)
         logging.debug(sqlStr)
+        return (rep, r_userData[2])
+
     def curse(self, data, context):
-        userData = self.getUserData(data['receiver'])
-        if userData[0]:
-            if userData[1] <= -2147483647:
-                raise OutOfRange(userData[1])
+        r_flag, r_userData = self.getUserData(data['receiver'])
+        s_flag, s_userData = self.getUserData(data['sender'])
+        #Need to check if sender exists, and their transaction count
+        if r_flag:
+            if r_userdata[0] <= -2147483647:
+                raise OutOfRange(r_userData[0])
+            elif s_userData[0] >= RANK_REPS[1]:
+                rep = 3
+            elif s_userData[0] >= RANK_REPS[0]:
+                rep = 2
+            else:
+                rep = 1
         else:
             self.addUser(data['receiver'])
-        sqlStr = f'UPDATE users SET rep = rep - 1 WHERE user_id = {data["receiver"]}'
+        sqlStr = f'UPDATE users SET rep = rep - {rep} WHERE user_id = {data["receiver"]}'
         self.cursor.execute(sqlStr)
         self.cnx.commit()
         self.addTrans(data)
@@ -97,6 +138,8 @@ class Database:
         if self.logLevel == 2:
             print(sqlStr)
         logging.debug(sqlStr)
+        return (rep, r_userData[2])
+
     def leaderboard(self):
         sqlStr = f'SELECT user_id, rep FROM users ORDER BY rep DESC LIMIT 5'
         self.cursor.execute(sqlStr)
