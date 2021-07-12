@@ -51,7 +51,10 @@ async def thank(ctx, user):
     try:
         rep, mention_flag, code = db.thank(data, context)
         if code == 1:
-            embed.set_author(name=f'{user} got + {rep} rep!', icon_url=user.avatar_url)
+            if mention_flag:
+                embed.set_author(name=f'{user.mention} got + {rep} rep!', icon_url=user.avatar_url)
+            else:
+                embed.set_author(name=f'{user} got + {rep} rep!', icon_url=user.avatar_url)
             await ctx.send(embed=embed)
         elif code == 2:
             embed.set_author(name=f'Oi! you\'ve reached your transaction limit!')
@@ -101,7 +104,10 @@ async def curse(ctx, user):
     try:
         rep, mention_flag, code = db.thank(data, context)
         if code == 1:
-            embed.set_author(name=f'{user} got - {rep} rep!', icon_url=user.avatar_url)
+            if mention_flag:
+                embed.set_author(name=f'{user.mention} got - {rep} rep!', icon_url=user.avatar_url)
+            else:
+                embed.set_author(name=f'{user} got - {rep} rep!', icon_url=user.avatar_url)
             await ctx.send(embed=embed)
         elif code == 2:
             embed.set_author(name=f'Oi! you\'ve reached your transaction limit!')
