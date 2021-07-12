@@ -49,9 +49,22 @@ async def thank(ctx, user):
         return
     context = (ctx.author, user)
     try:
-        rep, mention_flag = db.thank(data, context)
-        embed.set_author(name=f'{user} got + {rep} rep!', icon_url=user.avatar_url)
-        await ctx.send(embed=embed)
+        rep, mention_flag, code = db.thank(data, context)
+        if code == 1:
+            embed.set_author(name=f'{user} got + {rep} rep!', icon_url=user.avatar_url)
+            await ctx.send(embed=embed)
+        elif code == 2:
+            embed.set_author(name=f'Oi! you\'ve reached your transaction limit!')
+            embed.description = "Sorry, no can do, atleast untill you reach the next rank!"
+            await ctx.send(embed=embed)
+        elif code == 3:
+            embed.set_author(name=f'Hold on now')
+            embed.description = "Your rank isnt high enough to thank someone twice."
+            await ctx.send(embed=embed)
+        elif code == 4:
+            embed.set_author(name=f'Slow down Fella')
+            embed.description = "Gotta wait 4 weeks from your last thank for this user"
+            await ctx.send(embed=embed)
     except OutOfRange:
         print(excep)
         embed.set_author(name=f'{user} is awesome, They have the max rep!', icon_url=user.avatar_url)
@@ -86,9 +99,22 @@ async def curse(ctx, user):
         return
     context = (ctx.author, user)
     try:
-        rep, mention_flag = db.curse(data, context)
-        embed.set_author(name=f'{user} got - {rep} rep.', icon_url=user.avatar_url)
-        await ctx.send(embed=embed)
+        rep, mention_flag, code = db.thank(data, context)
+        if code == 1:
+            embed.set_author(name=f'{user} got - {rep} rep!', icon_url=user.avatar_url)
+            await ctx.send(embed=embed)
+        elif code == 2:
+            embed.set_author(name=f'Oi! you\'ve reached your transaction limit!')
+            embed.description = "Sorry, no can do, atleast untill you reach the next rank!"
+            await ctx.send(embed=embed)
+        elif code == 3:
+            embed.set_author(name=f'Hold on now')
+            embed.description = "Your rank isnt high enough to curse someone twice."
+            await ctx.send(embed=embed)
+        elif code == 4:
+            embed.set_author(name=f'Slow down Fella')
+            embed.description = "Gotta wait 4 weeks from your last curse for this user"
+            await ctx.send(embed=embed)
     except OutOfRange:
         embed.set_author(name=f'{user} sucks... They have hit rock bottom and cannot be cursed any more', icon_url=user.avatar_url)
         await ctx.send(embed=embed)

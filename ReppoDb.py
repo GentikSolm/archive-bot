@@ -1,6 +1,6 @@
 import mysql.connector as sql
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 
 RANK_REPS = [10, 100]
 
@@ -73,25 +73,22 @@ class Database:
         return vibes
 
     def checkRank(self, rep):
-        if s_userData[0] >= RANK_REPS[1]:
+        if rep >= RANK_REPS[1]:
             rep = 3
             transLimit = -1
             repeatTime = 'MONTH'
-            tagPerm = True
             mesPerm = True
-        elif s_userData[0] >= RANK_REPS[0]:
+        elif rep >= RANK_REPS[0]:
             rep = 2
             transLimit = 50
             repeatTime = 'MONTH'
-            tagPerm = True
             mesPerm = False
         else:
             rep = 1
             transLimit = 10
             repeatTime = 'NEVER'
-            tagPerm = False
             mesPerm = False
-        return (rep, transLimit, repeatTime, tagPerm, mesPerm)
+        return (rep, transLimit, repeatTime, mesPerm)
 
     def setrep(self, data, context, rep):
         if abs(rep) >= 2147483647:
@@ -110,17 +107,41 @@ class Database:
         self.addTrans(data)
 
     def thank(self, data, context):
+        # returns (rep, mention_flag, code)
+        #   1: Success
+        #   2: transLimit Reached
+        #   3: repeatTime is never
+        #   4: Too soon since last
         r_flag, r_userData = self.getUserData(data['receiver'])
         s_flag, s_userData = self.getUserData(data['sender'])
         if not r_flag:
-            addUser(data['receiver'])
+            self.addUser(data['receiver'])
             r_userData = [0,0,0]
         if not s_flag:
-            addUser(data['sender'])
+            self.addUser(data['sender'])
             s_userData = [0,0,0]
-        rep, transLimit, repeatTime, tagPerm, mesPerm = checkRank(userData[0])
+        rep, transLimit, repeatTime, mesPerm = self.checkRank(s_userData[0])
 
-        sqlStr = f'SELECT '
+        if s_userData[1] >= transLimit and transLimit != -1:
+            return (0, r_userData[2], 2)
+
+        sqlStr = f"SELECT time, action_id FROM transactions WHERE sender = {data['sender']} AND receiver = {data['receiver']} ORDER BY time DESC LIMIT 1;"
+        self.cursor.execute(sqlStr)
+        payload = self.cursor.fetchall()
+
+        if self.logLevel == 1:
+            print(f"Checked last trans of {data['sender']} AND {data['receiver']}- {payload}")
+        if self.logLevel == 2:
+            print(sqlStr, payload)
+
+        if payload != []:
+            time, action_id = payload[0]
+            if action_id == 1:
+                if repeatTime == 'NEVER':
+                    return (0, r_userData[2], 3)
+                elif repeatTime == 'MONTH':
+                    if not (time + timedelta(weeks=4)) < datetime.now():
+                        return (0, r_userData[2], 4)
 
         sqlStr = f'UPDATE users SET rep = rep + {rep} WHERE user_id = {data["receiver"]}'
         self.cursor.execute(sqlStr)
@@ -131,25 +152,45 @@ class Database:
         if self.logLevel == 2:
             print(sqlStr)
         logging.debug(sqlStr)
-        return (rep, r_userData[2])
+        return (rep, r_userData[2], 1)
 
     def curse(self, data, context):
+        # returns (rep, mention_flag, code)
+        #   1: Success
+        #   2: transLimit Reached
+        #   3: repeatTime is never
+        #   4: Too soon since last
         r_flag, r_userData = self.getUserData(data['receiver'])
         s_flag, s_userData = self.getUserData(data['sender'])
         if not r_flag:
-            addUser(data['receiver'])
+            self.addUser(data['receiver'])
             r_userData = [0,0,0]
         if not s_flag:
-            addUser(data['sender'])
+            self.addUser(data['sender'])
             s_userData = [0,0,0]
-        if r_userdata[0] <= -2147483647:
-            raise OutOfRange(r_userData[0])
-        elif s_userData[0] >= RANK_REPS[1]:
-            rep = 3
-        elif s_userData[0] >= RANK_REPS[0]:
-            rep = 2
-        else:
-            rep = 1
+        rep, transLimit, repeatTime, mesPerm = self.checkRank(s_userData[0])
+
+        if s_userData[1] >= transLimit and transLimit != -1:
+            return (0, r_userData[2], 2)
+
+        sqlStr = f"SELECT time, action_id FROM transactions WHERE sender = {data['sender']} AND receiver = {data['receiver']} ORDER BY time DESC LIMIT 1;"
+        self.cursor.execute(sqlStr)
+        payload = self.cursor.fetchall()
+
+        if self.logLevel == 1:
+            print(f"Checked last trans of {data['sender']} AND {data['receiver']}- {payload}")
+        if self.logLevel == 2:
+            print(sqlStr, payload)
+
+        if payload != []:
+            time, action_id = payload[0]
+            if action_id == 2:
+                if repeatTime == 'NEVER':
+                    return (0, r_userData[2], 3)
+                elif repeatTime == 'MONTH':
+                    if not (time + timedelta(weeks=4)) < datetime.now():
+                        return (0, r_userData[2], 4)
+
         sqlStr = f'UPDATE users SET rep = rep - {rep} WHERE user_id = {data["receiver"]}'
         self.cursor.execute(sqlStr)
         self.cnx.commit()
@@ -159,7 +200,8 @@ class Database:
         if self.logLevel == 2:
             print(sqlStr)
         logging.debug(sqlStr)
-        return (rep, r_userData[2])
+        return (rep, r_userData[2], 1)
+
 
     def leaderboard(self):
         sqlStr = f'SELECT user_id, rep FROM users ORDER BY rep DESC LIMIT 5'
