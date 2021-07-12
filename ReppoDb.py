@@ -72,6 +72,27 @@ class Database:
             print(f'{context[0]} vibechecked {context[1]}- returned {vibes[1]}.')
         return vibes
 
+    def checkRank(self, rep):
+        if s_userData[0] >= RANK_REPS[1]:
+            rep = 3
+            transLimit = -1
+            repeatTime = 'MONTH'
+            tagPerm = True
+            mesPerm = True
+        elif s_userData[0] >= RANK_REPS[0]:
+            rep = 2
+            transLimit = 50
+            repeatTime = 'MONTH'
+            tagPerm = True
+            mesPerm = False
+        else:
+            rep = 1
+            transLimit = 10
+            repeatTime = 'NEVER'
+            tagPerm = False
+            mesPerm = False
+        return (rep, transLimit, repeatTime, tagPerm, mesPerm)
+
     def setrep(self, data, context, rep):
         if abs(rep) >= 2147483647:
             raise OutOfRange(rep)
@@ -91,18 +112,16 @@ class Database:
     def thank(self, data, context):
         r_flag, r_userData = self.getUserData(data['receiver'])
         s_flag, s_userData = self.getUserData(data['sender'])
-        #Need to check if sender exists, and their transaction count
-        if r_flag:
-            if r_userData[0] >= 2147483647:
-                raise OutOfRange(r_userData[0])
-            elif s_userData[0] >= RANK_REPS[1]:
-                rep = 3
-            elif s_userData[0] >= RANK_REPS[0]:
-                rep = 2
-            else:
-                rep = 1
-        else:
-            self.addUser(data['receiver'])
+        if not r_flag:
+            addUser(data['receiver'])
+            r_userData = [0,0,0]
+        if not s_flag:
+            addUser(data['sender'])
+            s_userData = [0,0,0]
+        rep, transLimit, repeatTime, tagPerm, mesPerm = checkRank(userData[0])
+
+        sqlStr = f'SELECT '
+
         sqlStr = f'UPDATE users SET rep = rep + {rep} WHERE user_id = {data["receiver"]}'
         self.cursor.execute(sqlStr)
         self.cnx.commit()
@@ -117,18 +136,20 @@ class Database:
     def curse(self, data, context):
         r_flag, r_userData = self.getUserData(data['receiver'])
         s_flag, s_userData = self.getUserData(data['sender'])
-        #Need to check if sender exists, and their transaction count
-        if r_flag:
-            if r_userdata[0] <= -2147483647:
-                raise OutOfRange(r_userData[0])
-            elif s_userData[0] >= RANK_REPS[1]:
-                rep = 3
-            elif s_userData[0] >= RANK_REPS[0]:
-                rep = 2
-            else:
-                rep = 1
+        if not r_flag:
+            addUser(data['receiver'])
+            r_userData = [0,0,0]
+        if not s_flag:
+            addUser(data['sender'])
+            s_userData = [0,0,0]
+        if r_userdata[0] <= -2147483647:
+            raise OutOfRange(r_userData[0])
+        elif s_userData[0] >= RANK_REPS[1]:
+            rep = 3
+        elif s_userData[0] >= RANK_REPS[0]:
+            rep = 2
         else:
-            self.addUser(data['receiver'])
+            rep = 1
         sqlStr = f'UPDATE users SET rep = rep - {rep} WHERE user_id = {data["receiver"]}'
         self.cursor.execute(sqlStr)
         self.cnx.commit()
