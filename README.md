@@ -25,3 +25,6 @@ ReppoDb.py
 
 Reppo.py
 * Main file, contains slash commands & starts bot
+
+
+hey im here!
