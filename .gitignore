@@ -1,4 +1,4 @@
 .env
 reppo.log
 .private
-__pycache__\*
+__pycache__
