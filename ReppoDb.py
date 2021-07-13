@@ -22,25 +22,21 @@ class Database:
                            'VALUES (%(action_id)s, %(sender)s, %(receiver)s, %(time)s, %(setrep_param)s)')
         self.getPosStr = ("SELECT (SELECT COUNT(*) FROM users x WHERE x.rep >= users.rep) FROM users WHERE user_id = %s")
         self.logLevel = logLevel
-
     def __del__(self):
         self.cursor.close()
         self.cnx.close()
-
     def addUser(self, user_id):
         self.cursor.execute(self.insertUser, (user_id, 0))
         self.cnx.commit()
         if self.logLevel == 2:
             print(self.insertUser % (user_id, 0))
         logging.debug(self.insertUser % (user_id, 0))
-
     def addTrans(self, data):
         self.cursor.execute(self.insertTran, data)
         self.cnx.commit()
         if self.logLevel == 2:
             print(self.insertTran % (data))
         logging.debug(self.insertTran % (data))
-
     def getPos(self, user_id):
         self.cursor.execute(self.getPosStr % user_id)
         userData = self.cursor.fetchall()
@@ -49,7 +45,6 @@ class Database:
             print(self.getPosStr, user_id)
             print(f'\t Returned {userData}')
         return userData[0][0]
-
     def getUserData(self, user_id):
         # userData is [rep, total_trans, mention_flag]
         sqlStr = f'SELECT rep, total_trans, mention_flag FROM users WHERE user_id = {user_id}'
@@ -62,16 +57,17 @@ class Database:
         if userData == []:
             return (False, userData)
         return (True, userData[0])
-
     def vibeCheck(self, context):
         # Vibes is (User exists, [rep], rank)
         flag, userData = self.getUserData(context[1].id)
-        rank = self.getPos(context[1].id)
-        vibes = (flag, userData, rank)
+        if flag:
+            pos = self.getPos(context[1].id)
+        else:
+            pos = None
+        vibes = (flag, userData, pos)
         if self.logLevel == 1:
             print(f'{context[0]} vibechecked {context[1]}- returned {vibes[1]}.')
         return vibes
-
     def checkRank(self, rep):
         if rep >= RANK_REPS[1]:
             rep = 3
@@ -89,7 +85,6 @@ class Database:
             repeatTime = 'NEVER'
             mesPerm = False
         return (rep, transLimit, repeatTime, mesPerm)
-
     def setrep(self, data, context, rep):
         if abs(rep) >= 2147483647:
             raise OutOfRange(rep)
@@ -105,7 +100,6 @@ class Database:
             print(sqlStr)
         logging.debug(sqlStr)
         self.addTrans(data)
-
     def thank(self, data, context):
         # returns (rep, mention_flag, code)
         #   1: Success
@@ -153,7 +147,6 @@ class Database:
             print(sqlStr)
         logging.debug(sqlStr)
         return (rep, r_userData[2], 1)
-
     def curse(self, data, context):
         # returns (rep, mention_flag, code)
         #   1: Success
@@ -201,8 +194,6 @@ class Database:
             print(sqlStr)
         logging.debug(sqlStr)
         return (rep, r_userData[2], 1)
-
-
     def leaderboard(self):
         sqlStr = f'SELECT user_id, rep FROM users ORDER BY rep DESC LIMIT 5'
         self.cursor.execute(sqlStr)
@@ -212,3 +203,7 @@ class Database:
         if self.logLevel == 1:
             print('Someone called Leaderboard')
         return self.cursor.fetchall()
+    def setMentionFlag(self, flag, user_id):
+        sqlStr = f"UPDATE users SET mention_flag = {flag} WHERE user_id = {user_id}"
+        self.cursor.execute(sqlStr)
+        self.cnx.commit()

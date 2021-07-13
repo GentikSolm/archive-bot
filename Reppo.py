@@ -52,7 +52,8 @@ async def thank(ctx, user):
         rep, mention_flag, code = db.thank(data, context)
         if code == 1:
             if mention_flag:
-                embed.set_author(name=f'{user.mention} got + {rep} rep!', icon_url=user.avatar_url)
+                embed.set_author(name=f'{user} got + {rep} rep!', icon_url=user.avatar_url)
+                embed.description = user.mention
             else:
                 embed.set_author(name=f'{user} got + {rep} rep!', icon_url=user.avatar_url)
             await ctx.send(embed=embed)
@@ -106,6 +107,7 @@ async def curse(ctx, user):
         if code == 1:
             if mention_flag:
                 embed.set_author(name=f'{user.mention} got - {rep} rep!', icon_url=user.avatar_url)
+                embed.description = user.mention
             else:
                 embed.set_author(name=f'{user} got - {rep} rep!', icon_url=user.avatar_url)
             await ctx.send(embed=embed)
@@ -142,7 +144,7 @@ async def curse(ctx, user):
 async def vibeCheck(ctx, user):
     context = (ctx.author, user)
     try:
-        flag, userData, rank = db.vibeCheck(context)
+        flag, userData, pos = db.vibeCheck(context)
     except Exception as e:
         logging.error(e)
         print(e)
@@ -155,8 +157,14 @@ async def vibeCheck(ctx, user):
         embed.set_author(name=f'{user} has never been given, or had rep taken.', icon_url=user.avatar_url)
         await ctx.send(embed=embed)
     else:
-        embed.set_author(name=f'{user} has {userData[0]} rep.', icon_url=user.avatar_url)
-        embed.description = f'They are currently Rank **{rank}** on the Leaderboard.'
+        rep, total_trans, mention_flag = userData
+        mentionStr = 'Enabled' if mention_flag else 'Disabled'
+        embed.set_author(name=f'{user}', icon_url=user.avatar_url)
+        embed.add_field(name='Leaderboard', value=f'# {pos}', inline=True)
+        embed.add_field(name='Reputation', value=f'total: {rep}', inline=True)
+        embed.add_field(name='Mentions', value=f'{mentionStr}', inline=True)
+        embed.add_field(name='Transactions', value=f'total: {total_trans}', inline=True)
+
         await ctx.send(embed=embed)
 
 @slash.slash(name='setrep',
@@ -226,6 +234,28 @@ async def leaderboard(ctx):
     embed = discord.Embed(title='Top users:\n', description=topUsersString, color=EMBED_COLOR)
     await ctx.send(embed=embed)
 
+@slash.slash(name='mention',
+                description="Set your mention flag",
+                options=[create_option(
+                    name="flag",
+                    description="Bool for off / on",
+                    option_type=5,
+                    required=True)],
+                guild_ids=guild_ids)
+async def mention(ctx, flag):
+    embed = discord.Embed(color=EMBED_COLOR)
+    try:
+        db.setMentionFlag(flag, ctx.author.id)
+
+        embed.title ='Sounds good boss'
+        embed.description = f'Mentions set to {flag}'
+        await ctx.send(embed=embed)
+    except Exception as e:
+        print(e)
+        logging.error(e)
+        embed.title ='Oops, looks like I\'ve lost my marbles.'
+        embed.description = 'To the logs!'
+        await ctx.send(embed=embed)
 if __name__ == '__main__':
     if '-d' in sys.argv:
         logging.basicConfig(filename='reppo.log', encoding='utf-8', level=logging.DEBUG, format='%(asctime)s %(message)s')
