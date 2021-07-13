@@ -49,9 +49,26 @@ async def thank(ctx, user):
         return
     context = (ctx.author, user)
     try:
-        db.thank(data, context)
-        embed.set_author(name=f'{user} got + rep!', icon_url=user.avatar_url)
-        await ctx.send(embed=embed)
+        rep, mention_flag, code = db.thank(data, context)
+        if code == 1:
+            if mention_flag:
+                embed.set_author(name=f'{user} got + {rep} rep!', icon_url=user.avatar_url)
+                embed.description = user.mention
+            else:
+                embed.set_author(name=f'{user} got + {rep} rep!', icon_url=user.avatar_url)
+            await ctx.send(embed=embed)
+        elif code == 2:
+            embed.set_author(name=f'Oi! you\'ve reached your transaction limit!')
+            embed.description = "Sorry, no can do, atleast untill you reach the next rank!"
+            await ctx.send(embed=embed)
+        elif code == 3:
+            embed.set_author(name=f'Hold on now')
+            embed.description = "Your rank isnt high enough to thank someone twice."
+            await ctx.send(embed=embed)
+        elif code == 4:
+            embed.set_author(name=f'Slow down Fella')
+            embed.description = "Gotta wait 4 weeks from your last thank for this user"
+            await ctx.send(embed=embed)
     except OutOfRange:
         print(excep)
         embed.set_author(name=f'{user} is awesome, They have the max rep!', icon_url=user.avatar_url)
@@ -62,6 +79,7 @@ async def thank(ctx, user):
         embed.title ='Oops, looks like I\'ve lost my marbles.'
         embed.description = 'To the logs!'
         await ctx.send(embed=embed)
+
 @slash.slash(name='curse',
                 description="Curse user by taking rep",
                 options=[create_option(
@@ -85,9 +103,26 @@ async def curse(ctx, user):
         return
     context = (ctx.author, user)
     try:
-        db.curse(data, context)
-        embed.set_author(name=f'{user} got - rep.', icon_url=user.avatar_url)
-        await ctx.send(embed=embed)
+        rep, mention_flag, code = db.thank(data, context)
+        if code == 1:
+            if mention_flag:
+                embed.set_author(name=f'{user.mention} got - {rep} rep!', icon_url=user.avatar_url)
+                embed.description = user.mention
+            else:
+                embed.set_author(name=f'{user} got - {rep} rep!', icon_url=user.avatar_url)
+            await ctx.send(embed=embed)
+        elif code == 2:
+            embed.set_author(name=f'Oi! you\'ve reached your transaction limit!')
+            embed.description = "Sorry, no can do, atleast untill you reach the next rank!"
+            await ctx.send(embed=embed)
+        elif code == 3:
+            embed.set_author(name=f'Hold on now')
+            embed.description = "Your rank isnt high enough to curse someone twice."
+            await ctx.send(embed=embed)
+        elif code == 4:
+            embed.set_author(name=f'Slow down Fella')
+            embed.description = "Gotta wait 4 weeks from your last curse for this user"
+            await ctx.send(embed=embed)
     except OutOfRange:
         embed.set_author(name=f'{user} sucks... They have hit rock bottom and cannot be cursed any more', icon_url=user.avatar_url)
         await ctx.send(embed=embed)
@@ -109,7 +144,7 @@ async def curse(ctx, user):
 async def vibeCheck(ctx, user):
     context = (ctx.author, user)
     try:
-        data = db.vibeCheck(context)
+        flag, userData, pos = db.vibeCheck(context)
     except Exception as e:
         logging.error(e)
         print(e)
@@ -118,11 +153,18 @@ async def vibeCheck(ctx, user):
         await ctx.send(embed=embed)
         return
     embed = discord.Embed(color=EMBED_COLOR)
-    if not data[0]:
+    if not flag:
         embed.set_author(name=f'{user} has never been given, or had rep taken.', icon_url=user.avatar_url)
         await ctx.send(embed=embed)
     else:
-        embed.set_author(name=f'{user} has {data[1]} rep.', icon_url=user.avatar_url)
+        rep, total_trans, mention_flag = userData
+        mentionStr = 'Enabled' if mention_flag else 'Disabled'
+        embed.set_author(name=f'{user}', icon_url=user.avatar_url)
+        embed.add_field(name='Leaderboard', value=f'# {pos}', inline=True)
+        embed.add_field(name='Reputation', value=f'total: {rep}', inline=True)
+        embed.add_field(name='Mentions', value=f'{mentionStr}', inline=True)
+        embed.add_field(name='Transactions', value=f'total: {total_trans}', inline=True)
+
         await ctx.send(embed=embed)
 
 @slash.slash(name='setrep',
@@ -192,6 +234,28 @@ async def leaderboard(ctx):
     embed = discord.Embed(title='Top users:\n', description=topUsersString, color=EMBED_COLOR)
     await ctx.send(embed=embed)
 
+@slash.slash(name='mention',
+                description="Set your mention flag",
+                options=[create_option(
+                    name="flag",
+                    description="Bool for off / on",
+                    option_type=5,
+                    required=True)],
+                guild_ids=guild_ids)
+async def mention(ctx, flag):
+    embed = discord.Embed(color=EMBED_COLOR)
+    try:
+        db.setMentionFlag(flag, ctx.author.id)
+
+        embed.title ='Sounds good boss'
+        embed.description = f'Mentions set to {flag}'
+        await ctx.send(embed=embed)
+    except Exception as e:
+        print(e)
+        logging.error(e)
+        embed.title ='Oops, looks like I\'ve lost my marbles.'
+        embed.description = 'To the logs!'
+        await ctx.send(embed=embed)
 if __name__ == '__main__':
     if '-d' in sys.argv:
         logging.basicConfig(filename='reppo.log', encoding='utf-8', level=logging.DEBUG, format='%(asctime)s %(message)s')
@@ -208,5 +272,10 @@ if __name__ == '__main__':
         'host':'127.0.0.1',
         'database':'reppo'
     }
-    db = Database(dbConfig, logLevel)
+    try:
+        db = Database(dbConfig, logLevel)
+    except Exception as e:
+        print(f"ERROR: {e}")
+        logging.error(e)
+        exit()
     client.run(os.getenv('TOKEN'))
