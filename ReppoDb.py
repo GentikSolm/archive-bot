@@ -12,16 +12,23 @@ class OutOfRange(Exception):
 
 class Database:
     def __init__(self, config, logLevel):
-        self.cnx = sql.connect(**config)
-        self.cursor = self.cnx.cursor()
-        self.insertUser = ('INSERT INTO users'
-                           '(user_id, rep)'
-                           'VALUES (%s, %s)')
-        self.insertTran = ('INSERT INTO transactions'
-                           '(action_id, sender, receiver, time, setrep_param)'
-                           'VALUES (%(action_id)s, %(sender)s, %(receiver)s, %(time)s, %(setrep_param)s)')
-        self.getPosStr = ("SELECT (SELECT COUNT(*) FROM users x WHERE x.rep >= users.rep) FROM users WHERE user_id = %s")
-        self.logLevel = logLevel
+        try:
+            self.cnx = sql.connect(**config)
+            self.cursor = self.cnx.cursor()
+            self.insertUser = ('INSERT INTO users'
+                               '(user_id, rep)'
+                               'VALUES (%s, %s)')
+            self.insertTran = ('INSERT INTO transactions'
+                               '(action_id, sender, receiver, time, setrep_param)'
+                               'VALUES (%(action_id)s, %(sender)s, %(receiver)s, %(time)s, %(setrep_param)s)')
+            self.getPosStr = ("SELECT (SELECT COUNT(*) FROM users x WHERE x.rep >= users.rep) FROM users WHERE user_id = %s")
+            self.logLevel = logLevel
+        except Exception as e:
+            print(e)
+            print("Cannot connect to Database, see MySql in services.msc")
+            print("EXITING")
+            logging.error("Database connection failed")
+            exit()
     def __del__(self):
         self.cursor.close()
         self.cnx.close()

@@ -160,10 +160,10 @@ async def vibeCheck(ctx, user):
         rep, total_trans, mention_flag = userData
         mentionStr = 'Enabled' if mention_flag else 'Disabled'
         embed.set_author(name=f'{user}', icon_url=user.avatar_url)
-        embed.add_field(name='Leaderboard', value=f'# {pos}', inline=True)
-        embed.add_field(name='Reputation', value=f'total: {rep}', inline=True)
-        embed.add_field(name='Mentions', value=f'{mentionStr}', inline=True)
-        embed.add_field(name='Transactions', value=f'total: {total_trans}', inline=True)
+        embed.add_field(name='Leaderboard', value=f'# **{pos}**', inline=True)
+        embed.add_field(name='Reputation', value=f'total: **{rep}**', inline=True)
+        embed.add_field(name='Mentions', value=f'**{mentionStr}**', inline=True)
+        embed.add_field(name='Transactions', value=f'total: **{total_trans}**', inline=True)
 
         await ctx.send(embed=embed)
 
@@ -256,6 +256,24 @@ async def mention(ctx, flag):
         embed.title ='Oops, looks like I\'ve lost my marbles.'
         embed.description = 'To the logs!'
         await ctx.send(embed=embed)
+
+@slash.slash(name='help',
+                description="See commands and info",
+                options=[],
+                guild_ids=guild_ids)
+async def help(ctx):
+    embed = discord.Embed(color=EMBED_COLOR)
+    embed.title = 'So, you wanna know how I work...'
+    embed.description = """ Well, I track your reputation across servers. Here is the stuff you should know"""
+    embed.add_field(name='Ranks', value=f'There are 3 Ranks, determined by rep. Default, 10+ and 100+ Each Rank has different properties & commands ', inline=True)
+    embed.add_field(name='Transactions', value=f'A record is kept every time a curse or thank is used on another user\nDefault can have up to **10** transactions\n10+ can have **50**\n100+ have **unlimited**', inline=True)
+    embed.add_field(name='Commands ---------------', value='Well, only the cool ones', inline=False)
+    embed.add_field(name='Thank / Curse', value='Thank/Curse a user\nDefault: **±1**\n10+: **±2**\n100+: **±3**\nAfter 10+ rep, you can thank or curse a user once every 4 weeks', inline=True)
+    embed.add_field(name='Mention', value='Turns **on** or **off** mentioning. Enabling this will cause reppo to **notify** you when a user Thanks or Curses you.', inline=True)
+    embed.add_field(name='VibeCheck', value='Displays info on a user if they are in the Database', inline=True)
+    embed.add_field(name='Leaderboard', value='Displays the top **5** users', inline=True)
+    await ctx.send(embed=embed)
+
 if __name__ == '__main__':
     if '-d' in sys.argv:
         logging.basicConfig(filename='reppo.log', encoding='utf-8', level=logging.DEBUG, format='%(asctime)s %(message)s')
@@ -271,7 +289,7 @@ if __name__ == '__main__':
         'password':os.getenv('DB_PASSWORD'),
         'host':'127.0.0.1',
         'database':'reppo'
-    }
+        }
     try:
         db = Database(dbConfig, logLevel)
     except Exception as e:
