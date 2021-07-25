@@ -6,7 +6,7 @@ from ReppoDb import OutOfRange, Database
 
 from datetime import datetime
 from dotenv import load_dotenv
-from discord_slash import SlashCommand # Importing the newly installed library.
+from discord_slash import SlashCommand
 from discord_slash.utils.manage_commands import create_option
 from discord_slash.utils.manage_commands import create_permission
 from discord_slash.model import SlashCommandPermissionType
@@ -35,6 +35,7 @@ server_roles = {
                     required=True)],
                 guild_ids=guild_ids)
 async def thank(ctx, user):
+    # give rep to a user
     data = {
         'action_id':1,
         'sender':ctx.author.id,
@@ -47,9 +48,9 @@ async def thank(ctx, user):
         embed.set_author(name=f'You cant rate yourself bro...')
         await ctx.send(embed=embed)
         return
-    context = (ctx.author, user)
     try:
-        rep, mention_flag, code = db.thank(data, context)
+        rep, mention_flag, code = db.thank(data)
+        #code is used to determine what the result of the thank was, see db
         if code == 1:
             if mention_flag:
                 embed.set_author(name=f'{user} got + {rep} rep!', icon_url=user.avatar_url)
@@ -89,6 +90,7 @@ async def thank(ctx, user):
                     required=True)],
                 guild_ids=guild_ids)
 async def curse(ctx, user):
+    # take rep away from user
     data = {
         'action_id':2,
         'sender':ctx.author.id,
@@ -101,9 +103,8 @@ async def curse(ctx, user):
         embed.set_author(name=f'You cant rate yourself bro...')
         await ctx.send(embed=embed)
         return
-    context = (ctx.author, user)
     try:
-        rep, mention_flag, code = db.thank(data, context)
+        rep, mention_flag, code = db.curse(data)
         if code == 1:
             if mention_flag:
                 embed.set_author(name=f'{user.mention} got - {rep} rep!', icon_url=user.avatar_url)
@@ -142,9 +143,21 @@ async def curse(ctx, user):
                     required=True)],
                 guild_ids=guild_ids)
 async def vibeCheck(ctx, user):
-    context = (ctx.author, user)
+    # show all data on a user
     try:
-        flag, userData, pos = db.vibeCheck(context)
+        userDict = db.vibeCheck(user.id)
+        embed = discord.Embed(color=EMBED_COLOR)
+        if not userDict['exists']:
+            embed.set_author(name=f'{user} has never been given, or had rep taken.', icon_url=user.avatar_url)
+            await ctx.send(embed=embed)
+        else:
+            mentionStr = 'Enabled' if userDict["mention_flag"] else 'Disabled'
+            embed.set_author(name=f'{user}', icon_url=user.avatar_url)
+            embed.add_field(name='Leaderboard', value=f'# **{userDict["pos"]}**', inline=True)
+            embed.add_field(name='Reputation', value=f'total: **{userDict["rep"]}**', inline=True)
+            embed.add_field(name='Mentions', value=f'**{mentionStr}**', inline=True)
+            embed.add_field(name='Transactions', value=f'total: **{userDict["total_trans"]}**', inline=True)
+            await ctx.send(embed=embed)
     except Exception as e:
         logging.error(e)
         print(e)
@@ -152,20 +165,6 @@ async def vibeCheck(ctx, user):
         embed.description = 'To the logs!'
         await ctx.send(embed=embed)
         return
-    embed = discord.Embed(color=EMBED_COLOR)
-    if not flag:
-        embed.set_author(name=f'{user} has never been given, or had rep taken.', icon_url=user.avatar_url)
-        await ctx.send(embed=embed)
-    else:
-        rep, total_trans, mention_flag = userData
-        mentionStr = 'Enabled' if mention_flag else 'Disabled'
-        embed.set_author(name=f'{user}', icon_url=user.avatar_url)
-        embed.add_field(name='Leaderboard', value=f'# **{pos}**', inline=True)
-        embed.add_field(name='Reputation', value=f'total: **{rep}**', inline=True)
-        embed.add_field(name='Mentions', value=f'**{mentionStr}**', inline=True)
-        embed.add_field(name='Transactions', value=f'total: **{total_trans}**', inline=True)
-
-        await ctx.send(embed=embed)
 
 @slash.slash(name='setrep',
                 description="Set rep of user",
@@ -191,6 +190,7 @@ async def vibeCheck(ctx, user):
                     ]},
                 guild_ids=guild_ids)
 async def setrep(ctx, user, rep):
+    # set the rep of user to rep
     data = {
         'action_id':3,
         'sender':ctx.author.id,
@@ -198,10 +198,9 @@ async def setrep(ctx, user, rep):
         'time':str(datetime.now())[:-7],
         'setrep_param':rep
     }
-    context = (ctx.author, user)
     embed = discord.Embed(color=EMBED_COLOR)
     try:
-        db.setrep(data, context, rep)
+        db.setrep(data, rep)
         embed.set_author(name=f'{user} has had their rep set to {rep}', icon_url=user.avatar_url)
         await ctx.send(embed=embed)
     except OutOfRange:
@@ -219,8 +218,14 @@ async def setrep(ctx, user, rep):
                 description="Display the top 5 most reputable people",
                 guild_ids=guild_ids)
 async def leaderboard(ctx):
+    # display leaderboard
     try:
         topUsers = db.leaderboard()
+        topUsersString = ""
+        for count, user in enumerate(topUsers):
+            topUsersString += f"**{count+1}.** {await client.fetch_user(user[0])} with **{user[1]}** rep.\n"
+        embed = discord.Embed(title='Top users:\n', description=topUsersString, color=EMBED_COLOR)
+        await ctx.send(embed=embed)
     except Exception as e:
         logging.error(e)
         print(e)
@@ -228,11 +233,6 @@ async def leaderboard(ctx):
         embed.description = 'To the logs!'
         await ctx.send(embed=embed)
         return
-    topUsersString = ""
-    for count, user in enumerate(topUsers):
-        topUsersString += f"**{count+1}.** {await client.fetch_user(user[0])} with **{user[1]}** rep.\n"
-    embed = discord.Embed(title='Top users:\n', description=topUsersString, color=EMBED_COLOR)
-    await ctx.send(embed=embed)
 
 @slash.slash(name='mention',
                 description="Set your mention flag",
@@ -243,6 +243,7 @@ async def leaderboard(ctx):
                     required=True)],
                 guild_ids=guild_ids)
 async def mention(ctx, flag):
+    # set mention flag
     embed = discord.Embed(color=EMBED_COLOR)
     try:
         db.setMentionFlag(flag, ctx.author.id)
@@ -262,6 +263,7 @@ async def mention(ctx, flag):
                 options=[],
                 guild_ids=guild_ids)
 async def help(ctx):
+    # disp help message
     embed = discord.Embed(color=EMBED_COLOR)
     embed.title = 'So, you wanna know how I work...'
     embed.description = """ Well, I track your reputation across servers. Here is the stuff you should know"""
