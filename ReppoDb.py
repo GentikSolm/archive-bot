@@ -93,7 +93,7 @@ class Database:
         if userDict['exists']:
             userDict['pos'] = self.getPos(user_id)
         if self.logLevel == 1:
-            print(f'{user_id} was vibechecked- returned {vibes}.')
+            print(f'{user_id} was vibechecked- returned {userDict}.')
         return userDict
     def checkRank(self, rep):
         # returns perms for each rank depending on rep

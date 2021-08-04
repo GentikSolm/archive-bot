@@ -23,7 +23,8 @@ server_roles = {
     'admin':os.getenv('ADMIN_ROLE_ID'),
     'everyone':os.getenv('EVERYONE_ROLE_ID'),
     'owner':os.getenv('OWNER'),
-    'everyone2':os.getenv('EVERYONE_ROLE_ID_2')
+    'everyone2':os.getenv('EVERYONE_ROLE_ID_2'),
+    'jacobEveryone':os.getenv('JACOBSERVER')
 }
 
 @slash.slash(name='thank',
@@ -187,6 +188,9 @@ async def vibeCheck(ctx, user):
                     guild_ids[1]:[
                         create_permission(server_roles['everyone2'], SlashCommandPermissionType.ROLE, False),
                         create_permission(server_roles['owner'], SlashCommandPermissionType.ROLE, True)
+                    ],
+                    guild_ids[3]:[
+                        create_permission(server_roles['jacobEveryone'], SlashCommandPermissionType.ROLE, False),
                     ]},
                 guild_ids=guild_ids)
 async def setrep(ctx, user, rep):
