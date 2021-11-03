@@ -16,14 +16,6 @@ class Database:
     def __init__(self, config, logLevel):
         try:
             self.cnx = sql.connect(**config)
-            self.cursor = self.cnx.cursor()
-            self.insertUser = ('INSERT INTO users'
-                               '(user_id, rep)'
-                               'VALUES (%s, %s)')
-            self.insertTran = ('INSERT INTO transactions'
-                               '(action_id, sender, receiver, time, setrep_param)'
-                               'VALUES (%(action_id)s, %(sender)s, %(receiver)s, %(time)s, %(setrep_param)s)')
-            self.getPosStr = ("SELECT (SELECT COUNT(*) FROM users x WHERE x.rep >= users.rep) FROM users WHERE user_id = %s")
             self.logLevel = logLevel
         except Exception as e:
             print(e)
@@ -31,44 +23,34 @@ class Database:
             print("EXITING")
             logging.error("Database connection failed")
             exit()
+
     def __del__(self):
-        self.cursor.close()
         self.cnx.close()
+
     def addUser(self, user_id):
         # adds user_id to db with 0 rep, retunrs nothing
-        self.cursor.execute(self.insertUser, (user_id, 0))
-        self.cnx.commit()
-        if self.logLevel == 2:
-            print(self.insertUser % (user_id, 0))
-        logging.debug(self.insertUser % (user_id, 0))
+        status = self.callProc("insertUser", (user_id, 0))
+        logging.debug(status)
+
     def addTrans(self, data):
         # Adds transaction to db, with everthing in data. Returns nothing
-        self.cursor.execute(self.insertTran, data)
-        self.cnx.commit()
-        if self.logLevel == 2:
-            print(self.insertTran % (data))
-        logging.debug(self.insertTran % (data))
+        args = (data["action_id"], data["sender"], data["receiver"], data["setrep_param"])
+        status = self.callProc("insertTrans", args)
+        logging.debug(status)
+
     def getPos(self, user_id):
         # returns the [int] position in leaderboard of the user with user_id.
-        self.cursor.execute(self.getPosStr % user_id)
-        userData = self.cursor.fetchall()
+        userData = self.callProc("getLeaderboardPos", (user_id,))
         logging.debug(f'\n\t Returned {userData}')
-        if self.logLevel == 2:
-            print(self.getPosStr, user_id)
-            print(f'\t Returned {userData}')
         return userData[0][0]
+
     def getUserData(self, user_id):
         # checks db for user_id and returns a dict with all info on user
         # dict contains:
         #   exists, rep, total_trans, mention_flag, pos
         # POS IS NOT DECLARED, SINCE IT IS VERY EXPENSIVE. MUST BE GATHERED FROM getPos IF NEEDED
-        sqlStr = f'SELECT rep, total_trans, mention_flag FROM users WHERE user_id = {user_id}'
-        self.cursor.execute(sqlStr)
-        userData = self.cursor.fetchall()
-        logging.debug(sqlStr + f'\n\t Returned {userData}')
-        if self.logLevel == 2:
-            print(sqlStr)
-            print(f'\t Returned {userData}')
+        userData = self.callProc("getUserData", (user_id,))
+        logging.debug(f'\n\t Returned {userData}')
         if userData == []:
             userDict = {
                 'exists': False,
@@ -86,15 +68,15 @@ class Database:
             'pos':None
         }
         return userDict
+
     def vibeCheck(self, user_id):
         # collects all info from userData and finds & updates pos in userDict.
         # returns userDict with pos
         userDict = self.getUserData(user_id)
         if userDict['exists']:
             userDict['pos'] = self.getPos(user_id)
-        if self.logLevel == 1:
-            print(f'{user_id} was vibechecked- returned {userDict}.')
         return userDict
+
     def checkRank(self, rep):
         # returns perms for each rank depending on rep
         #   (rep, transLimit, repeatTime, mesPerm)
@@ -114,6 +96,7 @@ class Database:
             repeatTime = 'NEVER'
             mesPerm = False
         return (rep, transLimit, repeatTime, mesPerm)
+
     def setrep(self, data, rep):
         # sets rep of data[receiver] to rep
         # also adds transaction, but this does not count towards trans limit, since it is an
@@ -121,17 +104,11 @@ class Database:
         if abs(rep) >= 2147483647:
             raise OutOfRange(rep)
         if (self.getUserData(data['receiver'])['exists']):
-            sqlStr = f'UPDATE users SET rep = {rep} WHERE user_id = {data["receiver"]}'
+            self.callProc("updateRep", (data['receiver'], rep))
         else:
-            sqlStr = f'INSERT INTO users (user_id, rep) VALUE ({data["receiver"]}, {rep})'
-        self.cursor.execute(sqlStr)
-        self.cnx.commit()
-        if self.logLevel == 1:
-            print(f'{data["sender"]} setrep of {data["receiver"]} to {rep}')
-        if self.logLevel == 2:
-            print(sqlStr)
-        logging.debug(sqlStr)
+            self.callProc("setRep", (data['receiver'], rep))
         self.addTrans(data)
+
     def thank(self, data):
         # returns (rep, mention_flag, code)
         #   1: Success
@@ -149,34 +126,21 @@ class Database:
         if s_userDict['total_trans'] >= transLimit and transLimit != -1:
             return (0, r_userDict['mention_flag'], 2)
 
-        sqlStr = f"SELECT time, action_id FROM transactions WHERE sender = {data['sender']} AND receiver = {data['receiver']} AND action_id = 1 ORDER BY time DESC LIMIT 1;"
-        self.cursor.execute(sqlStr)
-        payload = self.cursor.fetchall()
-
-        if self.logLevel == 1:
-            print(f"Checked last trans of {data['sender']} AND {data['receiver']}- {payload}")
-        if self.logLevel == 2:
-            print(sqlStr, payload)
-
+        args = (data['sender'], data['receiver'], 1)
+        payload = self.callProc("checkLastTrans", args)
         if payload != []:
-            time, action_id = payload[0]
-            if action_id == 1:
-                if repeatTime == 'NEVER':
-                    return (0, r_userDict['mention_flag'], 3)
-                elif repeatTime == 'MONTH':
-                    if not (time + timedelta(weeks=4)) < datetime.now():
-                        return (0, r_userDict['mention_flag'], 4)
+            time = payload[0][0]
+            if repeatTime == 'NEVER':
+                return (0, r_userDict['mention_flag'], 3)
+            elif repeatTime == 'MONTH':
+                if not (time + timedelta(weeks=4)) < datetime.now():
+                    return (0, r_userDict['mention_flag'], 4)
 
-        sqlStr = f'UPDATE users SET rep = rep + {rep} WHERE user_id = {data["receiver"]}'
-        self.cursor.execute(sqlStr)
-        self.cnx.commit()
+        args = (data["receiver"], rep)
+        self.callProc("incRep", args)
         self.addTrans(data)
-        if self.logLevel == 1:
-            print(f'{data["sender"]} thanked {data["receiver"]}')
-        if self.logLevel == 2:
-            print(sqlStr)
-        logging.debug(sqlStr)
         return (rep, r_userDict['mention_flag'], 1)
+
     def curse(self, data):
         # returns (rep, mention_flag, code)
         #   1: Success
@@ -194,46 +158,43 @@ class Database:
         if r_userDict['total_trans'] >= transLimit and transLimit != -1:
             return (0, r_userDict['mention_flag'], 2)
 
-        sqlStr = f"SELECT time, action_id FROM transactions WHERE sender = {data['sender']} AND receiver = {data['receiver']} ORDER BY time DESC LIMIT 1;"
-        self.cursor.execute(sqlStr)
-        payload = self.cursor.fetchall()
-
-        if self.logLevel == 1:
-            print(f"Checked last trans of {data['sender']} AND {data['receiver']}- {payload}")
-        if self.logLevel == 2:
-            print(sqlStr, payload)
+        payload = self.callProc("checkLastTrans", (data['sender'], data['receiver'], 2))
 
         if payload != []:
-            time, action_id = payload[0]
-            if action_id == 2:
-                if repeatTime == 'NEVER':
-                    return (0, r_userDict['mention_flag'], 3)
-                elif repeatTime == 'MONTH':
-                    if not (time + timedelta(weeks=4)) < datetime.now():
-                        return (0, r_userDict['mention_flag'], 4)
+            time = payload[0][0]
+            if repeatTime == 'NEVER':
+                return (0, r_userDict['mention_flag'], 3)
+            elif repeatTime == 'MONTH':
+                if not (time + timedelta(weeks=4)) < datetime.now():
+                    return (0, r_userDict['mention_flag'], 4)
 
-        sqlStr = f'UPDATE users SET rep = rep - {rep} WHERE user_id = {data["receiver"]}'
-        self.cursor.execute(sqlStr)
-        self.cnx.commit()
+        self.callProc("incRep", (data["receiver"], rep))
         self.addTrans(data)
-        if self.logLevel == 1:
-            print(f'{data["sender"]} cursed {data["receiver"]}')
-        if self.logLevel == 2:
-            print(sqlStr)
-        logging.debug(sqlStr)
         return (rep, r_userDict['mention_flag'], 1)
+
     def leaderboard(self):
         # retuns the top users in the db by rep. DOES NOT GUARENTEE 5
-        sqlStr = f'SELECT user_id, rep FROM users ORDER BY rep DESC LIMIT 5'
-        self.cursor.execute(sqlStr)
-        logging.debug(sqlStr)
-        if self.logLevel == 2:
-            print(sqlStr)
-        if self.logLevel == 1:
-            print('Someone called Leaderboard')
-        return self.cursor.fetchall()
+        leaderboard = self.callProc("getLeaderboard", (5,))
+        logging.debug(status)
+        return leaderboard
+
     def setMentionFlag(self, flag, user_id):
         # sets mention flag of user_id to flag
-        sqlStr = f"UPDATE users SET mention_flag = {flag} WHERE user_id = {user_id}"
-        self.cursor.execute(sqlStr)
+        self.callProc("setMentionFlag", (user_id, flag))
+
+    def callProc(self, storedProcedure, args):
+        if(self.logLevel >= 1):
+            print(storedProcedure, ": ", args)
+        cursor = self.cnx.cursor()
+        cursor.callproc(storedProcedure, args)
+        payload = None
+        for result in cursor.stored_results():
+            payload = result.fetchall()
+        if(self.logLevel >= 1):
+            print('\t- ' + str(payload))
+        cursor.close()
         self.cnx.commit()
+        logging.debug(storedProcedure)
+        logging.debug(args)
+        logging.debug(payload)
+        return payload
