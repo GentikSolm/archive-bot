@@ -108,7 +108,7 @@ async def curse(ctx, user):
         rep, mention_flag, code = db.curse(data)
         if code == 1:
             if mention_flag:
-                embed.set_author(name=f'{user.mention} got - {rep} rep!', icon_url=user.avatar_url)
+                embed.set_author(name=f'{user} got - {rep} rep!', icon_url=user.avatar_url)
                 embed.description = user.mention
             else:
                 embed.set_author(name=f'{user} got - {rep} rep!', icon_url=user.avatar_url)
@@ -282,14 +282,11 @@ async def help(ctx):
 
 if __name__ == '__main__':
     if '-d' in sys.argv:
-        logging.basicConfig(filename='reppo.log', encoding='utf-8', level=logging.DEBUG, format='%(asctime)s %(message)s')
         logLevel = 2
     elif '-v' in sys.argv:
-        logging.basicConfig(filename='reppo.log', encoding='utf-8', level=logging.INFO, format='%(asctime)s %(message)s')
         logLevel = 1
     else:
-        logging.basicConfig(filename='reppo.log', encoding='utf-8', level=logging.WARNING, format='%(asctime)s %(message)s')
-        logLevel = 0;
+        logLevel = 0
     dbConfig = {
         'user':os.getenv('DB_USERNAME'),
         'password':os.getenv('DB_PASSWORD'),
@@ -300,6 +297,5 @@ if __name__ == '__main__':
         db = Database(dbConfig, logLevel)
     except Exception as e:
         print(f"ERROR: {e}")
-        logging.error(e)
         exit()
     client.run(os.getenv('TOKEN'))

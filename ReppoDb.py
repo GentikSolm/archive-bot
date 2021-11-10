@@ -175,7 +175,7 @@ class Database:
     def leaderboard(self):
         # retuns the top users in the db by rep. DOES NOT GUARENTEE 5
         leaderboard = self.callProc("getLeaderboard", (5,))
-        logging.debug(status)
+        # logging.debug(status)
         return leaderboard
 
     def setMentionFlag(self, flag, user_id):
