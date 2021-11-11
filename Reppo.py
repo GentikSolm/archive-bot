@@ -287,6 +287,55 @@ async def addGame(ctx, game):
         embed.description = 'To the logs!'
         await ctx.send(embed=embed)
 
+@slash.slash(name='listGames',
+                description="List your favorite games",
+                options=[create_option(
+                    name="user",
+                    description="The user you'd like to list games for",
+                    option_type=6,
+                    required=True)],
+                guild_ids=guild_ids)
+async def listGames(ctx, user):
+    # set mention flag
+    embed = discord.Embed(color=EMBED_COLOR)
+    try:
+        games = db.listGames(user.id)
+        descString = "In no particular order:\n"
+        if(len(games) !=0 ):
+            for count, game in enumerate(games[0]):
+                descString += f"{count+1}. {game}\n"
+            embed = discord.Embed(title=f'{user}\'s Games', description=descString, color=EMBED_COLOR)
+        else:
+            embed = discord.Embed(title=f'{user} plays no games!', color=EMBED_COLOR)
+        await ctx.send(embed=embed)
+    except Exception as e:
+        print(e)
+        logging.error(e)
+        embed.title ='Oops, looks like I\'ve lost my marbles.'
+        embed.description = 'To the logs!'
+        await ctx.send(embed=embed)
+
+@slash.slash(name='removeGame',
+                description="Remove a game from your favorites",
+                options=[create_option(
+                    name="game",
+                    description="Game Name",
+                    option_type=3,
+                    required=True)],
+                guild_ids=guild_ids)
+async def removeGame(ctx, game):
+    # set mention flag
+    embed = discord.Embed(color=EMBED_COLOR)
+    try:
+        db.removeGame(ctx.author.id, game)
+        embed.title = f'Removed {game} from your favorites!'
+        await ctx.send(embed=embed)
+    except Exception as e:
+        print(e)
+        logging.error(e)
+        embed.title ='Oops, looks like I\'ve lost my marbles.'
+        embed.description = 'To the logs!'
+        await ctx.send(embed=embed)
 
 @slash.slash(name='help',
                 description="See commands and info",

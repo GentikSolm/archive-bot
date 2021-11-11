@@ -183,7 +183,6 @@ class Database:
         self.callProc("setMentionFlag", (user_id, flag))
 
     def insertGame(self, user_id, game):
-
         try:
             self.callProc("insertGame", (game, user_id))
             return 0
@@ -194,6 +193,12 @@ class Database:
             else:
                 print(err)
                 return -1
+
+    def listGames(self, user):
+        return self.callProc("getGames", (user,))
+
+    def removeGame(self, user, game):
+        self.callProc("removeGame", (game, user))
 
     def callProc(self, storedProcedure, args):
         if(self.logLevel >= 1):
