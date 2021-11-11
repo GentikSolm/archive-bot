@@ -302,8 +302,8 @@ async def listGames(ctx, user):
         games = db.listGames(user.id)
         descString = "In no particular order:\n"
         if(len(games) !=0 ):
-            for count, game in enumerate(games[0]):
-                descString += f"{count+1}. {game}\n"
+            for count, game in enumerate(games):
+                descString += f"{count+1}. {game[0]}\n"
             embed = discord.Embed(title=f'{user}\'s Games', description=descString, color=EMBED_COLOR)
         else:
             embed = discord.Embed(title=f'{user} plays no games!', color=EMBED_COLOR)
