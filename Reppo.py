@@ -242,7 +242,7 @@ async def leaderboard(ctx):
                 description="Set your mention flag",
                 options=[create_option(
                     name="flag",
-                    description="Bool for off / on",
+                    description="Bool for true / false",
                     option_type=5,
                     required=True)],
                 guild_ids=guild_ids)
@@ -261,6 +261,32 @@ async def mention(ctx, flag):
         embed.title ='Oops, looks like I\'ve lost my marbles.'
         embed.description = 'To the logs!'
         await ctx.send(embed=embed)
+
+@slash.slash(name='addGame',
+                description="Add to your favorite list of games",
+                options=[create_option(
+                    name="game",
+                    description="Game Name",
+                    option_type=3,
+                    required=True)],
+                guild_ids=guild_ids)
+async def addGame(ctx, game):
+    # set mention flag
+    embed = discord.Embed(color=EMBED_COLOR)
+    try:
+        status = db.insertGame(ctx.author.id, game)
+        if(status == 0):
+            embed.title = f'Added {game} to your favorites!'
+        elif(status == 1):
+            embed.title = f'That game is already in your favorites!'
+        await ctx.send(embed=embed)
+    except Exception as e:
+        print(e)
+        logging.error(e)
+        embed.title ='Oops, looks like I\'ve lost my marbles.'
+        embed.description = 'To the logs!'
+        await ctx.send(embed=embed)
+
 
 @slash.slash(name='help',
                 description="See commands and info",
@@ -290,8 +316,9 @@ if __name__ == '__main__':
     dbConfig = {
         'user':os.getenv('DB_USERNAME'),
         'password':os.getenv('DB_PASSWORD'),
-        'host':'127.0.0.1',
-        'database':'reppo'
+        'host':'localhost',
+        'port':os.getenv("DB_PORT"),
+        'database':'reppo',
         }
     try:
         db = Database(dbConfig, logLevel)

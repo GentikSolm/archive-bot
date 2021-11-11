@@ -182,6 +182,19 @@ class Database:
         # sets mention flag of user_id to flag
         self.callProc("setMentionFlag", (user_id, flag))
 
+    def insertGame(self, user_id, game):
+
+        try:
+            self.callProc("insertGame", (game, user_id))
+            return 0
+        except sql.Error as err:
+            if(err.errno == 1062):
+                print("Duplicate entry")
+                return 1
+            else:
+                print(err)
+                return -1
+
     def callProc(self, storedProcedure, args):
         if(self.logLevel >= 1):
             print(storedProcedure, ": ", args)
