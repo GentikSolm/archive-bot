@@ -279,6 +279,8 @@ async def addGame(ctx, game):
             embed.title = f'Added {game} to your favorites!'
         elif(status == 1):
             embed.title = f'That game is already in your favorites!'
+        elif(status == -1):
+            embed.title = f'The Name of that game is too long!'
         await ctx.send(embed=embed)
     except Exception as e:
         print(e)

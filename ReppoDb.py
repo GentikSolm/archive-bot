@@ -173,6 +173,8 @@ class Database:
         self.callProc("setMentionFlag", (user_id, flag))
 
     def insertGame(self, user_id, game):
+        if(len(game) >= 20):
+            return -1
         try:
             self.callProc("insertGame", (game, user_id))
             return 0
@@ -188,6 +190,8 @@ class Database:
         return self.callProc("getGames", (user,))
 
     def removeGame(self, user, game):
+        if(len(game) >= 20):
+            return -1
         self.callProc("removeGame", (game, user))
 
     def callProc(self, storedProcedure, args):
