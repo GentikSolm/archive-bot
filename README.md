@@ -26,5 +26,8 @@ ReppoDb.py
 Reppo.py
 * Main file, contains slash commands & starts bot
 
-
-hey im here!
+Requirements:
+    discord
+    python-dotenv
+    discord-interactions
+    mysql-connector-python

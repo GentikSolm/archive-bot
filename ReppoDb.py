@@ -14,18 +14,8 @@ class OutOfRange(Exception):
 
 class Database:
     def __init__(self, config, logLevel):
-        try:
-            self.cnx = sql.connect(**config)
-            self.logLevel = logLevel
-        except Exception as e:
-            print(e)
-            print("Cannot connect to Database, see MySql in services.msc")
-            print("EXITING")
-            logging.error("Database connection failed")
-            exit()
-
-    def __del__(self):
-        self.cnx.close()
+        self.cnxString = config
+        self.logLevel = logLevel
 
     def addUser(self, user_id):
         # adds user_id to db with 0 rep, retunrs nothing
@@ -201,9 +191,17 @@ class Database:
         self.callProc("removeGame", (game, user))
 
     def callProc(self, storedProcedure, args):
+        try:
+            cnx = sql.connect(**self.cnxString)
+        except Exception as e:
+            print(e)
+            print("Cannot connect to Database, see MySql in services.msc")
+            print("EXITING")
+            logging.error("Database connection failed")
+            exit()
         if(self.logLevel >= 1):
             print(storedProcedure, ": ", args)
-        cursor = self.cnx.cursor()
+        cursor = cnx.cursor()
         cursor.callproc(storedProcedure, args)
         payload = None
         for result in cursor.stored_results():
@@ -211,7 +209,8 @@ class Database:
         if(self.logLevel >= 1):
             print('\t- ' + str(payload))
         cursor.close()
-        self.cnx.commit()
+        cnx.commit()
+        cnx.close()
         logging.debug(storedProcedure)
         logging.debug(args)
         logging.debug(payload)
