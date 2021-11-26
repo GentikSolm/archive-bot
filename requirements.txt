@@ -1,0 +1,5 @@
+discord
+python-dotenv
+discord-interactions
+mysql-connector-python
+discord-py-slash-command
