@@ -51,8 +51,6 @@ async def thank(ctx, user):
         return
     try:
         rep, mention_flag, code = db.thank(data)
-        db.grabUserInfo(ctx.author)
-        db.grabUserInfo(user)
         #code is used to determine what the result of the thank was, see db
         if code == 1:
             if mention_flag:
@@ -83,6 +81,8 @@ async def thank(ctx, user):
         embed.title ='Oops, looks like I\'ve lost my marbles.'
         embed.description = 'To the logs!'
         await ctx.send(embed=embed)
+    db.grabUserInfo(ctx.author)
+    db.grabUserInfo(user)
 
 @slash.slash(name='curse',
                 description="Curse user by taking rep",
@@ -110,8 +110,6 @@ async def curse(ctx, user):
         return
     try:
         rep, mention_flag, code = db.curse(data)
-        db.grabUserInfo(ctx.author)
-        db.grabUserInfo(user)
         if code == 1:
             if mention_flag:
                 embed.set_author(name=f'{user} got - {rep} rep!', icon_url=user.avatar_url)
@@ -140,6 +138,8 @@ async def curse(ctx, user):
         embed.title ='Oops, looks like I\'ve lost my marbles.'
         embed.description = 'To the logs!'
         await ctx.send(embed=embed)
+    db.grabUserInfo(ctx.author)
+    db.grabUserInfo(user)
 
 @slash.slash(name='vibe-check',
                 description="See how much rep a user has",
