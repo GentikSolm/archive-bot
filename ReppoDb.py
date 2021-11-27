@@ -194,6 +194,13 @@ class Database:
             return -1
         self.callProc("removeGame", (game, user))
 
+    def grabUserInfo(self, user):
+        name = user.name
+        avatar = user.avatar
+        id = user.id
+        self.callProc('updateUserInfo', (id,name,avatar))
+        return
+
     def callProc(self, storedProcedure, args):
         try:
             cnx = sql.connect(**self.cnxString)

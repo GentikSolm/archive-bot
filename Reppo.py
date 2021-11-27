@@ -51,6 +51,8 @@ async def thank(ctx, user):
         return
     try:
         rep, mention_flag, code = db.thank(data)
+        db.grabUserInfo(ctx.author)
+        db.grabUserInfo(user)
         #code is used to determine what the result of the thank was, see db
         if code == 1:
             if mention_flag:
@@ -91,6 +93,8 @@ async def thank(ctx, user):
                     required=True)],
                 guild_ids=guild_ids)
 async def curse(ctx, user):
+    db.grabUserInfo(ctx.author)
+    db.grabUserInfo(user)
     # take rep away from user
     data = {
         'action_id':2,
@@ -106,6 +110,8 @@ async def curse(ctx, user):
         return
     try:
         rep, mention_flag, code = db.curse(data)
+        db.grabUserInfo(ctx.author)
+        db.grabUserInfo(user)
         if code == 1:
             if mention_flag:
                 embed.set_author(name=f'{user} got - {rep} rep!', icon_url=user.avatar_url)
@@ -341,7 +347,6 @@ async def removeGame(ctx, game):
 
 @slash.slash(name='help',
                 description="See commands and info",
-                options=[],
                 guild_ids=guild_ids)
 async def help(ctx):
     # disp help message
