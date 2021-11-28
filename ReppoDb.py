@@ -158,7 +158,7 @@ class Database:
                 if not (time + timedelta(weeks=4)) < datetime.now():
                     return (0, r_userDict['mention_flag'], 4)
 
-        self.callProc("incRep", (data["receiver"], rep))
+        self.callProc("incRep", (data["receiver"], rep*-1))
         self.addTrans(data)
         return (rep, r_userDict['mention_flag'], 1)
 
