@@ -55,6 +55,7 @@ class Database:
             'rep': userData[0][0],
             'total_trans': userData[0][1],
             'mention_flag': userData[0][2],
+            'bio': userData[0][3],
             'pos':None
         }
         return userDict

@@ -160,10 +160,12 @@ async def vibeCheck(ctx, user):
         else:
             mentionStr = 'Enabled' if userDict["mention_flag"] else 'Disabled'
             embed.set_author(name=f'{user}', icon_url=user.avatar_url)
+            embed.add_field(name='Bio', value=f'{userDict["bio"]}\n', inline=True)
             embed.add_field(name='Leaderboard', value=f'# **{userDict["pos"]}**', inline=True)
             embed.add_field(name='Reputation', value=f'total: **{userDict["rep"]}**', inline=True)
             embed.add_field(name='Mentions', value=f'**{mentionStr}**', inline=True)
             embed.add_field(name='Transactions', value=f'total: **{userDict["total_trans"]}**', inline=True)
+
             await ctx.send(embed=embed)
     except Exception as e:
         logging.error(e)
@@ -223,6 +225,7 @@ async def setrep(ctx, user, rep):
         embed.title ='Oops, looks like I\'ve lost my marbles.'
         embed.description = 'To the logs!'
         await ctx.send(embed=embed)
+    db.grabUserInfo(user)
 
 @slash.slash(name='leaderboard',
                 description="Display the top 5 most reputable people",
