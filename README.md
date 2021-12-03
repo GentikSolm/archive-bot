@@ -28,3 +28,6 @@ Reppo.py
 
 To install required python libraries, use
 * pip install -r requirements.txt
+
+The bot also requires a MySql db with the stored procedures listed in mysql/storedproc.sql.
+This should be able to be ran directly into the database.
