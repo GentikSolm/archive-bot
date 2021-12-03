@@ -31,3 +31,7 @@ To install required python libraries, use
 
 The bot also requires a MySql db with the stored procedures listed in mysql/storedproc.sql.
 This should be able to be ran directly into the database.
+
+# SQL
+SQL files are also stored in the sql directory  
+For setup, simply run all of the scripts and your database should be initiated.
